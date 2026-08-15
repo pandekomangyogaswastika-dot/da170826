@@ -1,0 +1,42 @@
+[
+  {
+    "content": "Fase A: gate.sh diperbaiki + INV-F13 + test_core_f13 HIJAU + sabotase MERAH",
+    "status": "completed"
+  },
+  {
+    "content": "BUG-1/2/3 pemilik: master produk, audit 582 form, kartu & kontras — terverifikasi testing agent",
+    "status": "completed"
+  },
+  {
+    "content": "Penjaga INV-F14 + INV-F15 terdaftar, gate penuh HIJAU",
+    "status": "completed"
+  },
+  {
+    "content": "Fase B: 5 layar UANG/STOK (HRKasbon, KasbonStaff, Receiving, ProcurementRequest, AccessoriesDashboard) → pola tabel F10",
+    "status": "completed"
+  },
+  {
+    "content": "Fase B: Cacat kelas Tailwind DINAMIS (21 di 7 berkas) — lib/tone.js + audit + penjaga",
+    "status": "completed"
+  },
+  {
+    "content": "Fase B: test_core_f13 diperluas ke 9 layar (84/84) + baseline KARTU-SAJA 74→69",
+    "status": "completed"
+  },
+  {
+    "content": "Fase B: rebuild bundel + gate penuh HIJAU + verifikasi visual 5 layar baru",
+    "status": "in_progress"
+  },
+  {
+    "content": "Fase B: testing_agent_v3 untuk 5 layar baru + regresi",
+    "status": "pending"
+  },
+  {
+    "content": "Dokumentasi: plan.md + CHANGELOG.md untuk Fase B",
+    "status": "pending"
+  },
+  {
+    "content": "Fase C: F9 Settlement/Pencairan (pemetaan kolom oleh staf, tanpa menebak format)",
+    "status": "pending"
+  }
+]
