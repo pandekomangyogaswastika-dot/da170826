@@ -9,7 +9,7 @@ import os
 import time
 
 # Backend URL from environment
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://marketing-dash-fix.preview.emergentagent.com")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://maklon-dispatch-fix.preview.emergentagent.com")
 
 # Test credentials (from review request)
 ADMIN_CRED = {"email": "admin@garment.com", "password": "Admin@123"}

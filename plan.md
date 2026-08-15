@@ -659,7 +659,10 @@ Urutan berdasarkan kerusakan data (P0 dulu):
 - **F16 ✅** (2026-08-15) satu rumus sisa kirim buyer + hasil permak bisa dikirim + surat jalan yatim ditutup
 - **F17 ✅** (2026-08-15) dokumen PDF rapi: 0 tumpang tindih, tabel penuh lebar halaman
 - **F18 ✅** (2026-08-15) kirim material ke CMT menerbitkan MI + memotong stok + jurnal (produksi internal)
+- **F19 ✅** (2026-08-16) Gudang: tombol **Buat MI** (admin gudang + supervisor produksi), menu
+  **Buat Barcode** (2 tab, jumlah lembar, otomatis dari PO, riwayat cetak), dua menu mati
+  (`wh-scan`, `wms-cmt-dispatches`) dilepas dari sidebar tanpa mematikan deep-link
 
 > Catatan: fase huruf D/E/F/G/H di dokumen ini adalah hasil analisis 2026-08-15.
-> **E, F1/F2, dan H-1 SUDAH SELESAI** (lihat sesi #13 di bagian paling atas).
-> Yang masih BACKLOG: D · F3/F4 · G · H-2…H-9.
+> **E, F1/F2, H-1 (sesi #13) dan H-2 · H-3 · H-4/H-9 (sesi #14) SUDAH SELESAI.**
+> Yang masih BACKLOG: D · F3/F4 · G · H-5 · H-6 · H-7 · H-8 — rinciannya di `memory/ROADMAP.md`.

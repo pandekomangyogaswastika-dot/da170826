@@ -27,7 +27,7 @@ import sys
 from datetime import datetime
 
 # Public endpoint from frontend/.env
-BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com"
 
 class AccessoriesRefactorTester:
     def __init__(self):

@@ -170,7 +170,7 @@ async def seed_vendor_demo():
     logging.getLogger(__name__).info("   Role:     cmt_vendor")
     logging.getLogger(__name__).info("\n🔗 Test Portal:")
     logging.getLogger(__name__).info("   Login, lalu pilih Portal Maklon → Vendor Portal")
-    logging.getLogger(__name__).info("   atau langsung ke: https://marketing-dash-fix.preview.emergentagent.com/#/erp/maklon/vendor-portal")
+    logging.getLogger(__name__).info("   atau langsung ke: https://maklon-dispatch-fix.preview.emergentagent.com/#/erp/maklon/vendor-portal")
     
 
 if __name__ == '__main__':

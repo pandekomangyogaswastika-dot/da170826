@@ -13,7 +13,7 @@ import sys
 from datetime import datetime
 from typing import Dict, Optional
 
-BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com"
 TEST_EMAIL = "admin@garment.com"
 TEST_PASSWORD = "Admin@123"
 

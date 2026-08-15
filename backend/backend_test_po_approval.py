@@ -19,7 +19,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get("API_URL", "https://marketing-dash-fix.preview.emergentagent.com")
+BASE_URL = os.environ.get("API_URL", "https://maklon-dispatch-fix.preview.emergentagent.com")
 
 # Test credentials - IMPORTANT: Backend limits 10 logins/60s per IP, must reuse tokens!
 ADMIN = {"email": "admin@garment.com", "password": "Admin@123"}

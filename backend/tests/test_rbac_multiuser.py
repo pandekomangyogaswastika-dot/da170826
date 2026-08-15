@@ -10,7 +10,7 @@ import os
 import requests
 import pytest
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://marketing-dash-fix.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://maklon-dispatch-fix.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 PWD = "Dewi@123"
 

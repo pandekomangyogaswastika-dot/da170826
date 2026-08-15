@@ -1,9 +1,9 @@
 {
  "totals": {
-  "modules_scanned": 241,
+  "modules_scanned": 242,
   "card_only": 68,
   "thin_tables_lt5_cols": 49,
-  "tables_without_toggle": 133,
+  "tables_without_toggle": 134,
   "with_toggle": 29
  },
  "card_only": [
@@ -3147,21 +3147,21 @@
   {
    "file": "frontend/src/components/erp/RahazaMaterialIssueModule.jsx",
    "name": "RahazaMaterialIssueModule.jsx",
-   "lines": 489,
+   "lines": 764,
    "cards": 3,
-   "grids": 2,
-   "tables": 2,
-   "th": 12,
+   "grids": 4,
+   "tables": 3,
+   "th": 17,
    "toggle": false,
    "own": {
     "cards": 3,
-    "grids": 2,
-    "tables": 2,
-    "th": 12,
+    "grids": 4,
+    "tables": 3,
+    "th": 17,
     "toggle": false
    },
    "via": [],
-   "fields_used": 16,
+   "fields_used": 18,
    "apis": [],
    "verdict": [
     "campur tanpa pengalih",
@@ -3830,6 +3830,30 @@
    },
    "via": [],
    "fields_used": 2,
+   "apis": [],
+   "verdict": [
+    "campur tanpa pengalih",
+    "tanpa pengalih"
+   ]
+  },
+  {
+   "file": "frontend/src/components/erp/WMSBarcodeModule.jsx",
+   "name": "WMSBarcodeModule.jsx",
+   "lines": 428,
+   "cards": 9,
+   "grids": 2,
+   "tables": 3,
+   "th": 12,
+   "toggle": false,
+   "own": {
+    "cards": 9,
+    "grids": 2,
+    "tables": 3,
+    "th": 12,
+    "toggle": false
+   },
+   "via": [],
+   "fields_used": 17,
    "apis": [],
    "verdict": [
     "campur tanpa pengalih",

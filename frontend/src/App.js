@@ -264,25 +264,49 @@ function portalFromModulePrefix(moduleId) {
   return null;
 }
 
-function findPortalForModule(moduleId) {
+function findPortalForModule(moduleId, roleHint = null) {
   if (!moduleId) return null;
   // 1) Check legacy fallback (deprecated modules removed from sidebar)
   if (LEGACY_MODULE_TO_PORTAL[moduleId]) {
     return LEGACY_MODULE_TO_PORTAL[moduleId];
   }
   // 2) Scan active portal nav sections (supports flat items + nested groups)
+  //
+  // FASE H-2 (2026-08-16) — KENAPA SEMUA PEMILIK DIKUMPULKAN, BUKAN YANG PERTAMA
+  // Satu modul kini bisa punya pintu di BEBERAPA portal (shortcut lintas portal
+  // yang disengaja: 'Pengeluaran Material' ada di Gudang DAN Produksi, karena
+  // supervisor produksi berhak membuatnya tetapi tidak punya akses Portal Gudang).
+  // Mengembalikan portal PERTAMA yang ditemukan membuat urutan deklarasi
+  // PORTAL_NAV menentukan takdir tautan: `?module=wh-material-issue` bagi admin
+  // gudang mendarat di Portal Produksi yang tidak ia punyai ⇒ dibuang ke "Pilih
+  // Portal" tanpa satu pun pesan, dan pemakai menyimpulkan menunya hilang.
+  const owners = [];
   for (const [portalId, nav] of Object.entries(PORTAL_NAV || {})) {
     if (!nav || !Array.isArray(nav.sections)) continue;
     for (const section of nav.sections) {
       const items = section.items || [];
-      if (items.some((it) => it.id === moduleId)) return portalId;
-      // Walk nested groups (used by Production portal & others)
       const groups = section.groups || [];
-      for (const g of groups) {
-        const gItems = g.items || [];
-        if (gItems.some((it) => it.id === moduleId)) return portalId;
-      }
+      const inFlat = items.some((it) => it.id === moduleId);
+      const inGroup = groups.some((g) => (g.items || []).some((it) => it.id === moduleId));
+      if (inFlat || inGroup) { owners.push(portalId); break; }
     }
+  }
+  if (owners.length > 0) {
+    if (owners.length === 1) return owners[0];
+    let role = roleHint;
+    if (!role) {
+      try { role = JSON.parse(localStorage.getItem('erp_user') || '{}')?.role || null; }
+      catch (e) { role = null; }
+    }
+    if (role) {
+      // Tetap di portal yang sedang/terakhir dipakai bila pintunya memang ada di
+      // sana — perpindahan portal yang tidak diminta terasa seperti tersesat.
+      const current = localStorage.getItem('erp_portal');
+      if (current && owners.includes(current) && canAccessPortal(role, current)) return current;
+      const allowed = owners.find((p) => canAccessPortal(role, p));
+      if (allowed) return allowed;
+    }
+    return owners[0];
   }
   // 3) Lapis terakhir: tebak dari PREFIX id (lihat MODULE_PREFIX_TO_PORTAL).
   //    Menghilangkan dead-end "Pilih Portal" untuk modul yang hidup di registry

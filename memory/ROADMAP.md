@@ -1,5 +1,21 @@
 # ROADMAP — CV. Dewi Aditya ERP
 
+## Portal Gudang — sisa Fase H (setelah H-1 · H-2 · H-3 · H-4/H-9 SELESAI 2026-08-16)
+- **H-5 (P1)** Penerimaan kain belum otomatis membuat/mengurangi **roll kain**; roll masih diisi
+  manual di layar sendiri. Pintunya sudah dipindah ke section Inbound, otomatisasinya belum.
+- **H-6 (P2)** Portal Cutting belum memicu Pengeluaran Material saat kain dipotong (stok kain
+  berkurang di kenyataan, bukan di sistem).
+- **H-7 (P2)** Surat Jalan Gudang masih terpisah per sumber — satukan jadi satu daftar cetak.
+- **H-8 (P2)** Alias lama `cmt-progress` · `do-management` · `prod-cmt-packing` · `maklon-packing`
+  masih mengarah ke modul `wms-cmt-dispatches` yang koleksinya kosong; arahkan ke
+  `prod-shipments-vendor`.
+- **F3/F4 (P1)** Rapikan 5 PDF tersering (SPP · Invoice · Slip Gaji · Picklist · SJ Vendor) ke pola
+  `_pdf_data_table` (auto-wrap + penuh lebar halaman) seperti Surat Jalan Buyer di Fase F1/F2.
+- **G (P1)** Penomoran dokumen **Auto/Manual per jenis dokumen** yang bisa diatur System Admin
+  (SPP · CMT-RCV · SJ-RWK · Invoice · Kasbon).
+- **D (P0)** Dashboard Marketing: komponennya ada tapi **tidak pernah didaftarkan di sidebar**
+  mana pun, dan angkanya belum dari data hidup.
+
 ## P0 (menunggu owner)
 - **Kunci Anthropic**: isi `ANTHROPIC_API_KEY` di `backend/.env`. Sampai diisi, SEMUA fitur AI
   (Asisten ERP untuk pertanyaan kompleks, Prediksi Kas, Ringkasan Harian, Analitik SDM, Estimasi

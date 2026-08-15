@@ -4,7 +4,7 @@ import requests
 import sys
 from datetime import datetime
 
-BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com"
 
 # Test credentials
 ADMIN_CREDS = {"email": "admin@garment.com", "password": "Admin@123"}

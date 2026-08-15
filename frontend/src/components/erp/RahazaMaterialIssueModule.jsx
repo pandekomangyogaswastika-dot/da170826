@@ -228,16 +228,131 @@ export default function RahazaMaterialIssueModule({ token, onNavigate }) {
     } finally { setSaving(false); }
   };
 
+  // ── FASE H-2 (2026-08-16) — PINTU MASUK "BUAT MI" ─────────────────────────
+  // Sebelum ini layar Pengeluaran Material hanya bisa MELIHAT & menyetujui:
+  // tidak ada satu pun tombol membuat MI. Satu-satunya jalur create dari UI
+  // adalah endpoint maklon lama yang di backend sudah ditandai `deprecated`.
+  // Akibatnya arus keluar gudang yang TIDAK lahir dari job produksi internal
+  // (sampel, permak, pemakaian internal) tidak punya dokumen sama sekali —
+  // stok berkurang di kenyataan tanpa berkurang di sistem.
+  //
+  // Dua jalur, sengaja dibedakan:
+  //   · "Dari job produksi" — kebutuhan DIHITUNG dari BOM job (tidak diketik),
+  //     sehingga qty-nya mustahil beda dengan rencana produksi.
+  //   · "Manual dari master" — untuk kebutuhan di luar job. Materialnya WAJIB
+  //     dipilih dari master (aturan F14): nama material yang diketik bebas
+  //     membuat laporan pemakaian bahan salah diam-diam.
+  const [showCreate, setShowCreate] = useState(false);
+  const [createTab, setCreateTab] = useState('job');
+  const [jobs, setJobs] = useState([]);
+  const [jobId, setJobId] = useState('');
+  const [createLoc, setCreateLoc] = useState('');
+  const [manualRows, setManualRows] = useState([{ material_id: '', qty: '', uom: '', location_id: '' }]);
+  const [createNotes, setCreateNotes] = useState('');
+  const [createErr, setCreateErr] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  const { options: manualUom } = useUomOptions(manualRows.map(r => r.material_id).filter(Boolean));
+  const issuableMaterials = materials.filter(m => m.type !== 'fg');
+
+  const openCreate = async () => {
+    setShowCreate(true); setCreateErr('');
+    try {
+      const r = await fetch('/api/production-jobs?business_type=internal', { headers });
+      if (r.ok) {
+        const d = await r.json();
+        setJobs(Array.isArray(d) ? d : (d.items || []));
+      }
+    } catch { /* daftar job opsional — jalur manual tetap bisa dipakai */ }
+  };
+
+  const closeCreate = () => {
+    setShowCreate(false); setCreateErr(''); setJobId('');
+    setManualRows([{ material_id: '', qty: '', uom: '', location_id: '' }]);
+    setCreateNotes('');
+  };
+
+  const readErr = async (r, fallback) => {
+    try {
+      const e = await r.json();
+      if (typeof e.detail === 'string') return e.detail;
+      if (e.detail?.message) return e.detail.message;
+      return fallback;
+    } catch { return fallback; }
+  };
+
+  const createFromJob = async () => {
+    if (!jobId) { setCreateErr('Pilih job produksi internal dulu.'); return; }
+    setCreating(true); setCreateErr('');
+    try {
+      const r = await fetch('/api/rahaza/material-issues/draft-from-job', {
+        method: 'POST', headers,
+        body: JSON.stringify({ job_id: jobId, default_location_id: createLoc || null }),
+      });
+      if (!r.ok) { setCreateErr(await readErr(r, `Gagal membuat draft (HTTP ${r.status})`)); return; }
+      const mi = await r.json();
+      // Backend memakai kembali MI yang sudah ada untuk job yang sama (satu job
+      // satu MI). Kalau itu terjadi, KATAKAN — dulu layar langsung membuka dokumen
+      // lama tanpa pesan, dan pemakai yakin baru saja membuat draft baru lalu
+      // menunggu barang yang tidak pernah diminta ulang.
+      if (list.some(x => x.mi_number === mi.mi_number)) {
+        setCreateErr(`MI untuk job ini SUDAH ADA: ${mi.mi_number} (status ${mi.status}). `
+          + 'Tidak dibuat dokumen kedua — tutup jendela ini dan buka dokumennya dari daftar.');
+        await fetchList();
+        return;
+      }
+      closeCreate();
+      await fetchList();
+      openDetail(mi);
+    } finally { setCreating(false); }
+  };
+
+  const createManual = async () => {
+    const items = manualRows
+      .filter(r => r.material_id && Number(r.qty) > 0)
+      .map(r => {
+        const mat = materials.find(m => m.id === r.material_id) || {};
+        const base = baseUnitOf(manualUom[r.material_id], mat.unit);
+        const chosen = (r.uom || base || '').toLowerCase();
+        const row = { material_id: r.material_id, qty_required: Number(r.qty),
+          location_id: r.location_id || null };
+        if (chosen && base && chosen !== base) row.qty_uom = chosen;
+        return row;
+      });
+    if (items.length === 0) {
+      setCreateErr('Minimal 1 baris dengan material dan jumlah lebih dari 0.');
+      return;
+    }
+    setCreating(true); setCreateErr('');
+    try {
+      const r = await fetch('/api/rahaza/material-issues', {
+        method: 'POST', headers,
+        body: JSON.stringify({ items, notes: createNotes }),
+      });
+      if (!r.ok) { setCreateErr(await readErr(r, `Gagal menyimpan (HTTP ${r.status})`)); return; }
+      const mi = await r.json();
+      closeCreate();
+      await fetchList();
+      openDetail(mi);
+    } finally { setCreating(false); }
+  };
+
+  const setManualRow = (idx, patch) => setManualRows(
+    rows => rows.map((r, i) => i === idx ? { ...r, ...patch } : r));
+
   if (loading) return (<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" /></div>);
 
   return (
     <div className="space-y-5" data-testid="rahaza-mi-page">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Material Issue (MI)</h1>
-          <p className="text-muted-foreground text-sm mt-1">Keluarkan benang/aksesoris ke produksi berdasarkan BOM Work Order. Konfirmasi akan mengurangi stok.</p>
+          <h1 className="text-2xl font-bold text-foreground">Pengeluaran Material (MI)</h1>
+          <p className="text-muted-foreground text-sm mt-1">Keluarkan kain/benang/aksesoris ke produksi — dari BOM job produksi atau manual dari master. Approval-lah yang memotong stok.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={openCreate} data-testid="mi-create-btn">
+            <Plus className="w-4 h-4 mr-1.5" /> Buat MI
+          </Button>
           {buildings.length > 0 && (
             <SmartNativeSelect
               value={filterBuilding}
@@ -250,14 +365,14 @@ export default function RahazaMaterialIssueModule({ token, onNavigate }) {
               {buildings.map(b => <option key={b.id} value={b.id}>🏢 {b.name}</option>)}
             </SmartNativeSelect>
           )}
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="h-9 px-3 rounded-lg border border-[var(--glass-border)] bg-[var(--input-surface)] text-sm text-foreground" data-testid="mi-filter-status">
+          <SmartNativeSelect value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="h-9 px-3 rounded-lg border border-[var(--glass-border)] bg-[var(--input-surface)] text-sm text-foreground" data-testid="mi-filter-status">
             <option value="">Semua Status</option>
             <option value="draft">Draft</option>
             <option value="pending_approval">Menunggu Approval</option>
             <option value="rejected">Ditolak</option>
-            <option value="issued">Issued</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+            <option value="issued">Sudah Keluar</option>
+            <option value="cancelled">Dibatalkan</option>
+          </SmartNativeSelect>
         </div>
       </div>
 
@@ -285,6 +400,9 @@ export default function RahazaMaterialIssueModule({ token, onNavigate }) {
                       <div className="text-[11px] text-muted-foreground mt-0.5">MI draft dibuat OTOMATIS saat job produksi internal dibuat — gudang tinggal konfirmasi. MI manual juga bisa dibuat di sini.</div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button onClick={openCreate} className="h-8" data-testid="mi-empty-cta-create">
+                        <Plus className="w-3.5 h-3.5 mr-1.5" /> Buat MI
+                      </Button>
                       {onNavigate && (
                         <Button
                           variant="outline"
@@ -336,6 +454,163 @@ export default function RahazaMaterialIssueModule({ token, onNavigate }) {
       </GlassCard>
 
       {/* FASE 5: modal Draft-dari-WO dihapus (MI draft auto dari job internal) */}
+
+      {/* FASE H-2 — modal Buat MI (dari job BOM / manual dari master) */}
+      {showCreate && (
+        <Modal onClose={closeCreate} title="Buat Pengeluaran Material" size="xl">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <button onClick={() => setCreateTab('job')} data-testid="mi-create-tab-job"
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  createTab === 'job'
+                    ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent'
+                    : 'bg-[var(--glass-bg)] text-muted-foreground border-[var(--glass-border)]'}`}>
+                Dari job produksi
+              </button>
+              <button onClick={() => setCreateTab('manual')} data-testid="mi-create-tab-manual"
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  createTab === 'manual'
+                    ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent'
+                    : 'bg-[var(--glass-bg)] text-muted-foreground border-[var(--glass-border)]'}`}>
+                Manual dari master
+              </button>
+            </div>
+
+            {createTab === 'job' ? (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Kebutuhan material DIHITUNG dari BOM job (kain + aksesoris × qty job) —
+                  tidak diketik, sehingga tidak mungkin berbeda dengan rencana produksi.
+                  Hanya job <b>internal</b>: material job maklon milik klien, bukan stok DA.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Job produksi internal</div>
+                    <SmartNativeSelect value={jobId} onChange={e => setJobId(e.target.value)}
+                      className="h-9 px-2 text-sm w-full" data-testid="mi-create-job-select">
+                      <option value="">— Pilih job —</option>
+                      {jobs.map(j => (
+                        <option key={j.id} value={j.id}>
+                          {j.job_number} · {j.po_number || '-'} · {j.status}
+                        </option>
+                      ))}
+                    </SmartNativeSelect>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">Lokasi ambil (bawaan, bisa diubah nanti)</div>
+                    <SmartNativeSelect value={createLoc} onChange={e => setCreateLoc(e.target.value)}
+                      className="h-9 px-2 text-sm w-full" data-testid="mi-create-location-select">
+                      <option value="">— Tentukan per baris nanti —</option>
+                      {locations.map(l => <option key={l.id} value={l.id}>{l.code}</option>)}
+                    </SmartNativeSelect>
+                  </div>
+                </div>
+                {jobs.length === 0 && (
+                  <div className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-400/10 border border-amber-300/40 rounded-md px-3 py-2"
+                    data-testid="mi-create-no-jobs">
+                    Belum ada job produksi internal. Buat PO internal & job-nya dulu di Portal
+                    Produksi, atau pakai tab “Manual dari master”.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Material WAJIB dipilih dari master — barang jadi tidak ikut, karena yang
+                  keluar ke produksi adalah bahan.
+                </p>
+                <GlassPanel className="p-0 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[var(--glass-bg)]">
+                      <tr className="text-left text-xs text-muted-foreground">
+                        <th className="px-3 py-2">Material</th>
+                        <th className="px-3 py-2 text-right">Jumlah</th>
+                        <th className="px-3 py-2">Satuan</th>
+                        <th className="px-3 py-2">Lokasi ambil</th>
+                        <th className="px-3 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {manualRows.map((row, idx) => {
+                        const mat = materials.find(m => m.id === row.material_id) || {};
+                        return (
+                          <tr key={idx} className="border-t border-[var(--glass-border)]">
+                            <td className="px-3 py-2">
+                              <SmartNativeSelect value={row.material_id}
+                                onChange={e => setManualRow(idx, { material_id: e.target.value, uom: '' })}
+                                className="h-8 px-2 text-xs w-full" data-testid={`mi-manual-material-${idx}`}>
+                                <option value="">— Pilih material —</option>
+                                {issuableMaterials.map(m => (
+                                  <option key={m.id} value={m.id}>{m.code} · {m.name}</option>
+                                ))}
+                              </SmartNativeSelect>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <input type="number" min="0" step="0.0001" value={row.qty}
+                                onChange={e => setManualRow(idx, { qty: e.target.value })}
+                                className="h-8 w-24 rounded-md border border-input bg-background px-2 text-right text-xs text-foreground"
+                                data-testid={`mi-manual-qty-${idx}`} />
+                            </td>
+                            <td className="px-3 py-2">
+                              <UomSelect opt={manualUom[row.material_id]} fallbackUnit={mat.unit}
+                                value={row.uom || baseUnitOf(manualUom[row.material_id], mat.unit)}
+                                onChange={e => setManualRow(idx, { uom: e.target.value })}
+                                testId={`mi-manual-uom-${idx}`} className="w-24 h-8 text-xs" />
+                              <UomConversionHint opt={manualUom[row.material_id]} qty={row.qty}
+                                unit={row.uom || baseUnitOf(manualUom[row.material_id], mat.unit)}
+                                fallbackUnit={mat.unit} testId={`mi-manual-uom-hint-${idx}`} />
+                            </td>
+                            <td className="px-3 py-2">
+                              <SmartNativeSelect value={row.location_id}
+                                onChange={e => setManualRow(idx, { location_id: e.target.value })}
+                                className="h-8 px-2 text-xs" data-testid={`mi-manual-location-${idx}`}>
+                                <option value="">— Pilih —</option>
+                                {locations.map(l => <option key={l.id} value={l.id}>{l.code}</option>)}
+                              </SmartNativeSelect>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {manualRows.length > 1 && (
+                                <button onClick={() => setManualRows(rows => rows.filter((_, i) => i !== idx))}
+                                  className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-400/10 text-muted-foreground hover:text-red-600"
+                                  data-testid={`mi-manual-remove-${idx}`}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </GlassPanel>
+                <Button variant="ghost" className="border border-[var(--glass-border)] h-8"
+                  onClick={() => setManualRows(rows => [...rows, { material_id: '', qty: '', uom: '', location_id: '' }])}
+                  data-testid="mi-manual-add-row">
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Tambah baris
+                </Button>
+                <GlassInput value={createNotes} onChange={e => setCreateNotes(e.target.value)}
+                  placeholder="Keterangan (mis. 'sampel buyer', 'permak lot 3')"
+                  data-testid="mi-manual-notes" />
+              </div>
+            )}
+
+            {createErr && (
+              <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-md px-3 py-2"
+                data-testid="mi-create-error">{createErr}</div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button variant="ghost" onClick={closeCreate} className="border border-[var(--glass-border)]"
+                data-testid="mi-create-cancel">Batal</Button>
+              <Button onClick={createTab === 'job' ? createFromJob : createManual} disabled={creating}
+                data-testid="mi-create-submit">
+                <FileText className="w-4 h-4 mr-1.5" />
+                {creating ? 'Menyimpan…' : 'Buat Draft MI'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Detail modal */}
       {detail && (

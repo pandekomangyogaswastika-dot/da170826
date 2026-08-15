@@ -15,7 +15,7 @@ import requests
 import sys
 
 # Public endpoint from frontend/.env
-API = "https://marketing-dash-fix.preview.emergentagent.com"
+API = "https://maklon-dispatch-fix.preview.emergentagent.com"
 
 class MaklonSummaryRegressionTester:
     def __init__(self):

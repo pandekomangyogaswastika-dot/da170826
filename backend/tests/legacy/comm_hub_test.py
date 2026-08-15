@@ -23,7 +23,7 @@ import time
 from datetime import datetime
 
 # Configuration
-BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@garment.com"
 ADMIN_PASSWORD = "Admin@123"
 

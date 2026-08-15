@@ -9,7 +9,7 @@ import pytest
 import requests
 import websockets
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://marketing-dash-fix.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://maklon-dispatch-fix.preview.emergentagent.com").rstrip("/")
 WS_BASE = BASE_URL.replace("https://", "wss://").replace("http://", "ws://")
 
 ADMIN_EMAIL = "admin@garment.com"

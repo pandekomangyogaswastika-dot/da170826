@@ -67,7 +67,7 @@
 ## 🔑 Test Credentials
 
 ```
-URL:      https://marketing-dash-fix.preview.emergentagent.com
+URL:      https://maklon-dispatch-fix.preview.emergentagent.com
 Email:    admin@garment.com
 Password: Admin@123
 Role:     Super Admin (semua akses)

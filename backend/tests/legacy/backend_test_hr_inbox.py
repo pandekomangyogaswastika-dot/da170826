@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import os
 
 # Get backend URL from env
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://marketing-dash-fix.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://maklon-dispatch-fix.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 class HRInboxTester:

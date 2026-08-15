@@ -21,7 +21,7 @@ Test Coverage:
 10. Regression: GET /api/wms/opname2 excludes accessory-domain sessions
 11. Regression: POST /api/wms/opname2/start not blocked by accessory opname
 
-Public endpoint: https://marketing-dash-fix.preview.emergentagent.com
+Public endpoint: https://maklon-dispatch-fix.preview.emergentagent.com
 Admin credentials: admin@garment.com / Admin@123
 """
 
@@ -30,7 +30,7 @@ import sys
 from datetime import datetime
 from typing import Optional, Dict, Any
 
-BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@garment.com"
 ADMIN_PASSWORD = "Admin@123"
 

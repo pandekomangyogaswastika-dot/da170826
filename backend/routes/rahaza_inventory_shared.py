@@ -57,6 +57,29 @@ async def _require_admin(request: Request):
     raise HTTPException(403, "Forbidden: butuh permission inventory / warehouse.")
 
 
+async def _require_mi_editor(request: Request):
+    """Boleh MEMBUAT / mengubah / mengajukan Pengeluaran Material (MI).
+
+    FASE H-2 (2026-08-16, keputusan owner): pembuat MI = **admin gudang** dan
+    **supervisor produksi**. Sebelumnya gerbangnya `_require_admin` yang hanya
+    meloloskan role `admin/superadmin/owner` ⇒ dua orang yang benar-benar
+    mengerjakan pekerjaan ini (gudang yang mengeluarkan barang, produksi yang
+    memintanya) mendapat **403** dan satu-satunya jalan membuat MI dari layar
+    adalah endpoint maklon lama yang sudah `deprecated`.
+
+    Approval TETAP terpisah (`_require_mi_approver`): yang membuat permintaan
+    tidak boleh sekaligus menyetujui pemotongan stok.
+    """
+    from routes.shared import require_perm
+    return await require_perm(
+        request, "inv.material_issue.manage", "inventory.manage", "warehouse.manage",
+        legacy_roles=("admin_gudang", "supervisor_produksi", "admin_produksi",
+                      "warehouse_manager", "ppic", "manager", "production_manager"),
+        message="Akses ditolak: butuh izin membuat pengeluaran material "
+                "(inv.material_issue.manage).",
+    )
+
+
 async def _ensure_stock_row(db, material_id: str, location_id: str):
     existing = await db.rahaza_material_stock.find_one({"material_id": material_id, "location_id": location_id}, {"_id": 0})
     if existing:

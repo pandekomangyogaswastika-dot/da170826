@@ -321,6 +321,8 @@ const WMSPickListModule           = lazy(() => import('./WMSPickListModule'));
 const WMSFabricRollsModule        = lazy(() => import('./WMSFabricRollsModule'));
 const WMSDeliveryNotesModule      = lazy(() => import('./WMSDeliveryNotesModule'));
 const WMSCMTDispatchesModule      = lazy(() => import('./WMSCMTDispatchesModule'));
+// FASE H-3 (2026-08-16): menu "Buat Barcode" — label bahan & barang jadi.
+const WMSBarcodeModule            = lazy(() => import('./WMSBarcodeModule'));
 const WMSOpnameScanModule         = lazy(() => import('./WMSOpnameScanModule'));  // Fase 4: opname scan-driven (SSOT); Fase 5: menggantikan WMSOpnameEnhancedModule (dihapus)
 
 // ─── Portal Maklon (Fase 3) ───────────────────────────────────────────────────
@@ -1161,6 +1163,8 @@ export const MODULE_REGISTRY = {
   'wms-fabric-rolls':    WMSFabricRollsModule,
   'wms-delivery-notes':  WMSDeliveryNotesModule,
   'wms-cmt-dispatches':  WMSCMTDispatchesModule,
+  // FASE H-3 (2026-08-16): pintu BARU "Buat Barcode" (label bahan & barang jadi).
+  'wh-barcode':          WMSBarcodeModule,
   'wms-opname-enhanced': WMSOpnameScanModule,   // Fase 4: dialihkan ke opname scan-driven (SSOT + finance)
   'wms-opname-scan':     WMSOpnameScanModule,
 

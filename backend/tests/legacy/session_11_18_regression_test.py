@@ -21,7 +21,7 @@ import sys
 from datetime import datetime
 
 # Public endpoint from frontend/.env
-API = "https://marketing-dash-fix.preview.emergentagent.com"
+API = "https://maklon-dispatch-fix.preview.emergentagent.com"
 
 class Session11_18RegressionTester:
     def __init__(self):

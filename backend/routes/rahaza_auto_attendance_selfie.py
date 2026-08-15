@@ -38,7 +38,7 @@ router = APIRouter(tags=["rahaza-auto-attendance-selfie"])
 # Config
 RP_ID = os.environ.get("WEBAUTHN_RP_ID", "analytics-builds.preview.emergentagent.com")
 RP_NAME = os.environ.get("WEBAUTHN_RP_NAME", "Dewi Aditya ERP")
-ORIGIN = os.environ.get("WEBAUTHN_ORIGIN", "https://marketing-dash-fix.preview.emergentagent.com")
+ORIGIN = os.environ.get("WEBAUTHN_ORIGIN", "https://maklon-dispatch-fix.preview.emergentagent.com")
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 
 

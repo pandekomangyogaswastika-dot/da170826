@@ -142,8 +142,8 @@
   },
   
   "testing_environment": {
-    "frontend_url": "https://marketing-dash-fix.preview.emergentagent.com",
-    "backend_url": "https://marketing-dash-fix.preview.emergentagent.com/api",
+    "frontend_url": "https://maklon-dispatch-fix.preview.emergentagent.com",
+    "backend_url": "https://maklon-dispatch-fix.preview.emergentagent.com/api",
     "test_user": "admin@garment.com",
     "browser": "Chromium (Playwright)",
     "viewport": "1920x1080 (desktop)",

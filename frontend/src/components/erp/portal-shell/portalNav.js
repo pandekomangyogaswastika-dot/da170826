@@ -59,7 +59,7 @@ import {
   // AI & Self
   Brain, Target, UserCircle, CheckSquare, Settings,
   // New portals (Maklon + Toko)
-  Star, MessageSquare, ShoppingCart, Bell, Store, Scan,
+  Star, MessageSquare, ShoppingCart, Bell, Store, Barcode,
   // Phase 5 — Catalog + Marketing (Week 4-7)
   Layers, ShoppingBag, AlertCircle, HeartPulse, Video,
   // Phase 3 Week 8-10 — Content Calendar, Discounts, Product Launch
@@ -217,6 +217,13 @@ export const PORTAL_NAV = {
         items: [
           { id: 'prod-pos-internal',      label: 'PO Internal',         icon: ClipboardSignature },
           { id: 'prod-shipments-vendor',  label: 'Kirim Material CMT',  icon: Scissors },
+          // FASE H-2 (2026-08-16, keputusan owner): pembuat Pengeluaran Material =
+          // admin gudang DAN supervisor produksi. Supervisor produksi tidak punya
+          // akses Portal Gudang (PORTAL_ACCESS), jadi tanpa pintu di sini
+          // kewenangan barunya tidak bisa dipakai dari layar mana pun. Duplikat
+          // LINTAS-portal memang diizinkan aturan IA (shortcut yang disengaja) —
+          // isinya modul yang SAMA, bukan salinan kedua.
+          { id: 'wh-material-issue',      label: 'Pengeluaran Material', icon: PackageMinus },
           { id: 'da-cmt-receive',         label: 'Terima FG dari CMT',  icon: Truck },
           { id: 'cmt-permak',             label: 'Permak / Perbaikan',  icon: Wrench },
           { id: 'prod-shipments-buyer',   label: 'Serah Terima FG',     icon: PackageOpen },
@@ -327,9 +334,16 @@ export const PORTAL_NAV = {
         // (Penilaian Supplier) DIPINDAH ke Portal Pengadaan — keduanya pekerjaan
         // PEMBELIAN, bukan pekerjaan gudang. Gudang tetap memegang penerimaan
         // fisik, penyimpanan, dan karantina QC.
+        //
+        // FASE H-9 (2026-08-16): 'Roll Kain' DIPINDAH ke sini dari section alat.
+        // Alasan: roll kain LAHIR dari penerimaan kain dan MATI di Cutting — dia
+        // bagian rantai inbound, bukan "alat". (Catatan jujur: penerimaan kain
+        // BELUM otomatis membuat/mengurangi roll — itu H-5, masih backlog. Yang
+        // dipindah sekarang baru tempat pintunya supaya urutan kerjanya benar.)
         label: 'INBOUND — PENERIMAAN',
         items: [
           { id: 'wh-receiving',          label: 'Penerimaan Barang', icon: PackagePlus },
+          { id: 'wms-fabric-rolls',      label: 'Roll Kain',         icon: Package },
           { id: 'wh-putaway',            label: 'Penyimpanan',       icon: ArrowRightLeft },
           { id: 'wh-quarantine',         label: 'Karantina QC',      icon: ShieldAlert },
         ],
@@ -341,24 +355,43 @@ export const PORTAL_NAV = {
         // job produksi internal (production_internal_adapter.py `draft-from-job`),
         // lalu approve → potong stok + posting jurnal (rahaza_posting.post_inventory_issue).
         // Jadi tempatnya bersama outbound lain, bukan di laci "stok".
+        //
+        // FASE H-4 (2026-08-16): pintu 'Kirim CMT' (`wms-cmt-dispatches`) DILEPAS
+        // dari sidebar Gudang atas izin owner. Diukur sebelum dilepas:
+        // `wh_cmt_dispatches` = 0 dokumen dan pekerjaan nyatanya sudah berjalan di
+        // Portal Produksi/Maklon → 'Kirim Material CMT' (`prod-shipments-vendor`,
+        // koleksi `vendor_shipments`), yang sejak Fase H-1 juga menerbitkan
+        // Pengeluaran Material + memotong stok. Dua pintu untuk satu pekerjaan
+        // membuat orang mengisi di layar yang stoknya tidak pernah bergerak.
+        // moduleId-nya TIDAK dihapus dari moduleRegistry ⇒ deep-link lama tetap hidup.
         label: 'OUTBOUND — PENGIRIMAN',
         items: [
           { id: 'wh-material-issue',  label: 'Pengeluaran Material', icon: PackageMinus },
           { id: 'fulfillment',        label: 'Fulfillment',   icon: Send },
           { id: 'wh-picklist',        label: 'Pick List',     icon: ClipboardList },
           { id: 'wms-delivery-notes', label: 'Surat Jalan',   icon: FileText },
-          { id: 'wms-cmt-dispatches', label: 'Kirim CMT',     icon: Truck },
           { id: 'wh-returns',         label: 'Retur Fisik',   icon: RotateCcw },
         ],
       },
       {
-        label: 'STRUKTUR, ALAT & AKSESORIS',
+        // FASE H-3 (2026-08-16): pintu BARU 'Buat Barcode'. Endpoint label bahan
+        // (`/api/wms/materials/labels/batch-pdf`) & barang jadi
+        // (`/api/wms/fg/labels/batch-pdf`) sudah ada berbulan-bulan dengan NOL
+        // pemanggil UI ⇒ barcode gudang praktis tidak bisa dicetak siapa pun.
+        //
+        // FASE H-4 (2026-08-16): pintu 'Scan Gudang' (`wh-scan`) DILEPAS atas izin
+        // owner. Diukur: layar itu membaca antrean `wh_pending_movements` = 0
+        // dokumen, dan endpoint pengisi antreannya
+        // (`/api/wms/pending/create-from-production|create-from-shipment`) TIDAK
+        // punya satu pun pemanggil di seluruh repo ⇒ layar permanen kosong.
+        // Scan tetap hidup MELEKAT pada prosesnya (Penerimaan, Penyimpanan,
+        // Opname, Pengeluaran Material) — bukan sebagai menu tersendiri.
+        label: 'ALAT & AKSESORIS',
         items: [
+          { id: 'wh-barcode',                   label: 'Buat Barcode',      icon: Barcode },
           { id: 'wh-structure',                 label: 'Struktur Gudang',   icon: Building2 },
-          { id: 'wh-scan',                      label: 'Scan Gudang',       icon: Scan },
           { id: 'wh-units',                     label: 'Satuan & Konversi', icon: Scale },
           { id: 'wh-audit',                     label: 'Audit Trail',       icon: History },
-          { id: 'wms-fabric-rolls',             label: 'Roll Kain',         icon: Package },
           { id: 'wh-accessory-ops',             label: 'Operasi Aksesoris', icon: Sparkles },
           { id: 'warehouse-accessory-requests', label: 'Inbox Aksesoris',   icon: PackageSearch },
         ],

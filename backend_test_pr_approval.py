@@ -11,7 +11,7 @@ import sys
 from datetime import datetime
 
 # Use public endpoint
-BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com"
 
 class PRApprovalTester:
     def __init__(self):

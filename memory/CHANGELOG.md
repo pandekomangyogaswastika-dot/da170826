@@ -1,3 +1,75 @@
+# [2026-08-16 #14] **FASE H-2 · H-3 · H-4/H-9** — Portal Gudang: pintu yang benar-benar hidup
+
+Tiga keluhan pemilik tentang Portal Gudang, ketiganya terbukti dengan angka SEBELUM diperbaiki.
+
+## H-2 — "Pengeluaran Material tidak ada tombol buatnya"
+`RahazaMaterialIssueModule.jsx` (488 baris) memang **tidak punya satu pun jalur create**: hanya
+lihat / ajukan / setujui. Satu-satunya pembuatan MI dari layar adalah endpoint maklon lama yang
+di backend sudah `deprecated=True`. Lebih dalam lagi: gerbang `POST /api/rahaza/material-issues`
+memakai `_require_admin` yang hanya meloloskan role `admin/superadmin/owner` ⇒ **admin gudang dan
+supervisor produksi — dua orang yang benar-benar mengerjakan pekerjaan ini — mendapat 403.**
+
+- `_require_mi_editor` (baru, `rahaza_inventory_shared.py`): izin `inv.material_issue.manage` /
+  `inventory.manage` / `warehouse.manage`, legacy role `admin_gudang` + `supervisor_produksi`
+  (+ ppic/manager/warehouse_manager). Dipakai POST/PUT/submit. **Approve tetap terpisah**
+  (`_require_mi_approver`) — pembuat permintaan tidak boleh sekaligus memotong stok.
+- Layar: tombol **Buat MI** + dua jalur yang sengaja dibedakan — *dari job produksi* (kebutuhan
+  DIHITUNG dari BOM job, tidak diketik ⇒ mustahil beda dengan rencana produksi) dan *manual dari
+  master* (material wajib dipilih dari master, F14; barang jadi tidak ikut).
+- Kalau backend memakai kembali MI yang sudah ada untuk job yang sama, layar **mengatakannya**
+  ("MI untuk job ini SUDAH ADA: <no>"). Dulu dokumen lama dibuka tanpa pesan dan pemakai yakin
+  baru membuat draft baru.
+- Supervisor produksi tidak punya akses Portal Gudang, jadi pintu MI ditambahkan juga di
+  **Portal Produksi → Produksi Internal** — tanpa itu kewenangan barunya tidak bisa dipakai.
+
+## H-3 — "Buat Barcode belum ada menunya"
+Endpoint label bahan & barang jadi sudah ada berbulan-bulan dengan **0 pemanggil UI**. Tiga cacat
+yang baru kelihatan begitu layarnya dibuat:
+1. **Label FG SELALU 404.** Jalur FG hanya membaca `rahaza_fg_matrix` yang **kosong (0 dokumen)**,
+   sementara 332 barang jadi nyata hidup di `rahaza_materials` (`type='fg'`, lahir dari varian
+   master). Sekarang pencarian FG jatuh ke SSOT itu.
+2. **Batch label bahan mencetak di luar kertas.** `COLS = 3` × 90 mm = 270 mm pada A4 selebar
+   210 mm ⇒ `MARGIN_X` negatif, kolom ketiga hilang di setiap baris. Kolom/baris sekarang
+   DIHITUNG dari ukuran halaman (`core/label_render.grid_geometry`).
+3. **Semua label bahan mencetak satuan "pcs"** — satuan dibaca dari `uom`, field yang tidak ada di
+   `rahaza_materials` (namanya `unit`). Kain ber-satuan kg pun tertulis pcs.
+
+Baru: `backend/core/label_render.py` (SSOT gambar label; label bahan dulu digambar dua kali),
+`backend/routes/wms_barcode.py`, layar `wh-barcode` (dua tab: Bahan & Aksesoris · Barang Jadi).
+Kemampuan yang memang diminta pemilik: **jumlah lembar per item** (dulu 1 label/item), **otomatis
+dari PO produksi** (qty label = qty PO, tidak diketik ulang), 1 PDF gabungan, **riwayat cetak**
+(`wh_barcode_print_jobs` — menjawab "kenapa ada dua label berkode sama di gudang").
+Dua pagar: kode di luar master **ditolak** (barcode harus bisa discan jadi item nyata) dan batas
+500 lembar/cetak (200 per baris).
+
+## H-4/H-9 — dua menu mati dilepas, IA Gudang dirapikan
+- `wh-scan` (Scan Gudang): antrean `wh_pending_movements` = **0 dokumen** dan endpoint pengisinya
+  **tanpa satu pun pemanggil** di repo ⇒ layar permanen kosong. Scan tetap hidup melekat pada
+  prosesnya (Penerimaan, Penyimpanan, Opname, Pengeluaran Material).
+- `wms-cmt-dispatches` (Kirim CMT): `wh_cmt_dispatches` = **0 dokumen**; pekerjaan nyatanya di
+  Portal Produksi (`vendor_shipments`) yang sejak H-1 juga menerbitkan MI + memotong stok.
+- moduleId keduanya **TIDAK dihapus** dari registry ⇒ deep-link/bookmark lama tetap hidup.
+- Section Gudang: Inventori & Stok · Inbound (+ **Roll Kain** dipindah ke sini) · Outbound ·
+  Alat & Aksesoris (+ **Buat Barcode**).
+
+## Regresi yang ditemukan penguji UI dan ditutup di sesi yang sama
+Begitu satu modul punya pintu di DUA portal, `findPortalForModule()` di `App.js` mengembalikan
+portal **pertama** menurut urutan deklarasi ⇒ `?module=wh-material-issue` bagi admin gudang
+mendarat di Portal Produksi yang tidak ia punyai, lalu dibuang ke "Pilih Portal" **tanpa satu pun
+pesan**. Ternyata sudah ada **14 modul lintas-portal** yang menanggung risiko ini jauh sebelum
+H-2. Sekarang semua portal pemilik dikumpulkan lalu disaring dengan `canAccessPortal` (dan portal
+yang sedang dipakai diutamakan). Dijaga invarian H2-6.
+
+**Gate baru INV-F19** (`scripts/verify_fase_h_gudang.py`) — 16 invarian: kewenangan buat MI dua
+peran · pembuat bisa mengajukan · jumlah lembar dihormati + tercatat di riwayat · label FG dari
+SSOT · kode karangan ditolak · batas lembar ditegakkan · qty label = qty PO · geometri label tidak
+pernah keluar halaman · pintu mati lepas dari sidebar tapi deep-link hidup · modul lintas-portal
+diselesaikan lewat hak akses. `bash scripts/gate.sh` = **VERDICT HIJAU** (41 gate).
+Uji UI (iteration_67): 11/12 skenario lulus di percobaan pertama, 1 regresi deep-link di atas
+sudah diperbaiki + diberi pagar. Data uji dibersihkan (MI & job cetak = kembali ke keadaan awal).
+
+---
+
 # [2026-08-15 #13] **FASE E · F1/F2 · H-1** — satu rumus sisa kirim · PDF tidak tumpang tindih · kirim material memotong stok
 
 ## Akar semua keluhan dispatch: `qty_actual` SUDAH netto lolos QC
@@ -2753,7 +2825,7 @@ Selisih 20 pcs = **4 run kebocoran × 5 pcs** (Temuan 1) — `plan.md:115` sendi
 fiktif** (bagian EKSEKUSI menghapus baris stok lalu insert dari baseline) ·
 `tests/backend_test_fase12.py` hard-assert `9667750 (±100)`/`32220 (±10)` ⇒ **FAIL PASTI**.
 * **Bonus temuan:** berkas uji yang sama mematok `BASE_URL` ke preview container lama
-  (`https://marketing-dash-fix.preview.emergentagent.com`) yang **sudah mati** ⇒ menguji host salah.
+  (`https://maklon-dispatch-fix.preview.emergentagent.com`) yang **sudah mati** ⇒ menguji host salah.
 * **Fix:** SSOT tunggal `scripts/lib/acc_baseline.py` — semua total **DITURUNKAN** dari tabel
   `STOCK_BASELINE × COST_BASELINE` + `assert` pengaman (qty **32.200**, nilai **Rp 9.663.750**,
   8 bernilai / 2 belum, unvalued_qty 3.300). `cleanup_fase10_qa.py` &

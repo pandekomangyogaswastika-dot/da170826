@@ -5,7 +5,8 @@ from database import get_db
 from auth import require_auth, serialize_doc, log_activity  # noqa: F401
 from typing import Optional
 from routes.rahaza_inventory_shared import (
-    router, log, _uid, _now, _require_admin,
+    router, log, _uid, _now, _require_admin,  # noqa: F401
+    _require_mi_editor,
     _gen_mi_number, _enrich_mi, _norm_mi_items, _require_mi_approver,
     _log_movement,
 )
@@ -53,7 +54,7 @@ async def get_mi(mid: str, request: Request):
 
 @router.post("/material-issues")
 async def create_mi_manual(request: Request):
-    user = await _require_admin(request)
+    user = await _require_mi_editor(request)
     db = get_db()
     body = await request.json()
     _raw_items = body.get("items") or []
@@ -89,7 +90,7 @@ async def create_mi_manual(request: Request):
 
 @router.put("/material-issues/{mid}")
 async def update_mi(mid: str, request: Request):
-    await _require_admin(request)
+    await _require_mi_editor(request)
     db = get_db()
     mi = await db.rahaza_material_issues.find_one({"id": mid}, {"_id": 0})
     if not mi:
@@ -125,7 +126,7 @@ async def update_mi(mid: str, request: Request):
 
 @router.post("/material-issues/{mid}/submit")
 async def submit_mi(mid: str, request: Request):
-    user = await _require_admin(request)
+    user = await _require_mi_editor(request)
     db = get_db()
     mi = await db.rahaza_material_issues.find_one({"id": mid}, {"_id": 0})
     if not mi:

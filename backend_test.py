@@ -3,7 +3,7 @@
 import requests
 import sys
 
-BASE_URL = "https://data-reconcile-26.preview.emergentagent.com"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com"
 ADMIN_CREDS = {"email": "admin@garment.com", "password": "Admin@123"}
 
 # Expected data for July 2026 at TIKTOK-OUTFIT store

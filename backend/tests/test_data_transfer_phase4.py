@@ -8,7 +8,7 @@ import io
 import csv
 from datetime import datetime
 
-BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com/api"
+BASE_URL = "https://maklon-dispatch-fix.preview.emergentagent.com/api"
 ADMIN_CREDS = {"email": "admin@garment.com", "password": "Admin@123"}
 
 # 8 registry keys to test

@@ -1008,3 +1008,30 @@ potong stok saat impor **belum** dinyalakan (monitoring dulu).
 **tidak pernah** menulis jurnal atau AR. Angka marketing selalu diberi label
 **"sebelum potongan platform"** karena komisi platform tidak ada di ekspor pesanan.
 
+
+
+## Portal Gudang — pintu yang hidup (Fase H, 2026-08-16)
+Aturan tetap yang lahir dari sesi ini (jangan dilanggar tanpa keputusan owner baru):
+
+- **Pengeluaran Material (MI) = arus keluar gudang ke produksi.** Pembuatnya **admin gudang** dan
+  **supervisor produksi** (`_require_mi_editor`: `inv.material_issue.manage` / `inventory.manage` /
+  `warehouse.manage`). **Penyetujunya orang lain** (`_require_mi_approver`) — approval-lah yang
+  memotong stok + memposting jurnal. Pembuat ≠ penyetuju, disengaja.
+  Dua jalur buat: dari **BOM job produksi internal** (qty dihitung, tidak diketik) dan **manual
+  dari master** (material wajib dari master; barang jadi tidak boleh keluar sebagai bahan).
+  Pintunya ada di **Portal Gudang → Outbound** dan **Portal Produksi → Produksi Internal**
+  (supervisor produksi tidak punya akses Portal Gudang).
+- **Buat Barcode (`wh-barcode`)** — satu menu, dua tab (Bahan & Aksesoris · Barang Jadi).
+  Nilai barcode **selalu kode master**; kode di luar master ditolak, bukan dicetak. Sumber jumlah
+  label: manual per item atau **otomatis dari PO produksi** (qty label = qty PO). Batas 500
+  lembar/cetak, 200/baris. Setiap cetak tercatat di `wh_barcode_print_jobs`.
+  Gambar label hanya boleh dari SSOT `backend/core/label_render.py` — jumlah kolom/baris DIHITUNG
+  dari ukuran halaman, jangan pernah dihardcode (dulu kolom ketiga tercetak di luar A4).
+  SSOT barang jadi = `rahaza_materials` (`type='fg'`); `rahaza_fg_matrix` kosong dan hanya dibaca
+  sebagai lapis pertama untuk data lama.
+- **Menu yang koleksinya nol dilepas dari sidebar, id-nya tetap di `moduleRegistry`** supaya
+  bookmark/deep-link lama tidak mati: `wh-scan`, `wms-cmt-dispatches`. Satu pekerjaan = satu pintu;
+  pengiriman material ke CMT hanya lewat `prod-shipments-vendor`.
+- **Modul yang muncul di lebih dari satu portal** wajib diselesaikan `App.js:findPortalForModule()`
+  dengan penyaringan `canAccessPortal` (ada 14 modul seperti ini). Memilih portal pertama menurut
+  urutan deklarasi membuang pemakai ke portal yang tidak ia punyai tanpa pesan. Dijaga gate INV-F19.

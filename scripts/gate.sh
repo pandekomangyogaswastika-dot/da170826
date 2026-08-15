@@ -416,6 +416,21 @@ if [ $AUTH_READY -eq 1 ]; then
   run_gate "STOK/UANG — Kirim material ke CMT menerbitkan MI + memotong stok + jurnal (INV-F18)" \
            "python3 scripts/verify_fase_h1_kirim_material_potong_stok.py"
 
+  # ── INV-F19 (2026-08-16, Fase H-2/H-3/H-4) — PORTAL GUDANG: PINTU YANG HIDUP ─
+  # Tiga keluhan pemilik dijaga sekaligus, dan ketiganya PERNAH terukur:
+  #   · "pengeluaran material tidak ada tombol buatnya" — layar MI 488 baris tanpa
+  #     satu pun jalur create; gerbang POST-nya hanya meloloskan admin/superadmin
+  #     sehingga ADMIN GUDANG & SUPERVISOR PRODUKSI (yang mengerjakannya) 403;
+  #   · "buat barcode belum ada menunya" — endpoint label bahan & FG ada
+  #     berbulan-bulan dengan 0 pemanggil UI, hanya 1 label per item, dan jalur FG
+  #     membaca `rahaza_fg_matrix` yang KOSONG ⇒ SELALU 404 untuk barang yang ADA;
+  #   · "kirim cmt & scan gudang menu mati" — keduanya menunjuk koleksi 0 dokumen.
+  # Penjaga ini juga menahan dua arah salah: kode di luar master tidak boleh
+  # dicetak (barcode harus bisa discan jadi item nyata) dan pintu yang dilepas dari
+  # sidebar TIDAK boleh hilang dari moduleRegistry (deep-link lama mati diam-diam).
+  run_gate "PRODUK/STOK — Gudang: tombol buat MI, Buat Barcode, menu mati dilepas (INV-F19)" \
+           "python3 scripts/verify_fase_h_gudang.py"
+
 else
   for g in "state machine jurnal" "nomor dokumen kembar" "batas nilai AR/AP" \
            "RBAC/IDOR" "input jahat 4xx" "endpoint kritis" \
@@ -435,7 +450,8 @@ else
            "Marketing berkas masuk toko yang salah (INV-F12)" \
            "Dispatch buyer satu rumus sisa kirim (INV-F16)" \
            "PDF rapi tanpa tumpang tindih (INV-F17)" \
-           "Kirim material CMT memotong stok (INV-F18)"; do
+           "Kirim material CMT memotong stok (INV-F18)" \
+           "Gudang: buat MI + Buat Barcode + menu mati (INV-F19)"; do
     skip_gate "$g" "backend/auth belum siap"
   done
 fi

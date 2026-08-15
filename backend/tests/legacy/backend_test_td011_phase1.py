@@ -18,7 +18,7 @@ import requests
 import sys
 
 # Public endpoint from frontend/.env
-API = "https://marketing-dash-fix.preview.emergentagent.com"
+API = "https://maklon-dispatch-fix.preview.emergentagent.com"
 
 class TD011Phase1Tester:
     def __init__(self):

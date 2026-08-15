@@ -143,8 +143,8 @@
   },
   
   "test_environment": {
-    "backend_url": "https://marketing-dash-fix.preview.emergentagent.com",
-    "frontend_url": "https://marketing-dash-fix.preview.emergentagent.com",
+    "backend_url": "https://maklon-dispatch-fix.preview.emergentagent.com",
+    "frontend_url": "https://maklon-dispatch-fix.preview.emergentagent.com",
     "test_accounts_used": [
       "admin@garment.com (Admin/Superadmin)",
       "gudang@dewiaditya.id (Warehouse - admin_gudang role)"

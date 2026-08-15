@@ -1818,6 +1818,7 @@ from routes.wms_stock_schema import router as wms_stock_schema_router  # FASE 6.
 # WMS Label Printing — Session #11.21
 from routes.wms_material_labels import router as wms_material_labels_router
 from routes.wms_fg_labels import router as wms_fg_labels_router
+from routes.wms_barcode import router as wms_barcode_router  # FASE H-3: menu Buat Barcode
 # WMS AI Insights — Powered by GPT-4o
 from routes.wms_ai_insights import router as wms_ai_router
 from routes.analytics_ai import router as analytics_ai_router
@@ -1840,6 +1841,7 @@ app.include_router(wms_quarantine_router)  # FASE 6: /api/wms/quarantine (karant
 app.include_router(wms_stock_schema_router)  # FASE 6.6-A: /api/wms/stock-schema (health + reconcile + rollback)
 app.include_router(wms_material_labels_router)  # Session #11.21
 app.include_router(wms_fg_labels_router)  # Session #11.21
+app.include_router(wms_barcode_router)  # FASE H-3 (2026-08-16): Buat Barcode
 app.include_router(wms_ai_router)
 app.include_router(analytics_ai_router)
 from routes.dewi_returns import router as dewi_returns_router

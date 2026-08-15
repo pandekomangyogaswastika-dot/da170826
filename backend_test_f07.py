@@ -8,7 +8,7 @@ import sys
 from datetime import datetime
 
 class F07BackendTester:
-    def __init__(self, base_url="https://marketing-dash-fix.preview.emergentagent.com"):
+    def __init__(self, base_url="https://maklon-dispatch-fix.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0
