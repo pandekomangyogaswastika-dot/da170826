@@ -11,7 +11,7 @@ import requests
 import time
 from datetime import datetime
 
-BASE_URL = "https://rnd-cockpit-hub.preview.emergentagent.com"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
 
 # Test credentials (from /app/memory/test_credentials.md)
 ADMIN_CRED = {"email": "admin@garment.com", "password": "Admin@123"}

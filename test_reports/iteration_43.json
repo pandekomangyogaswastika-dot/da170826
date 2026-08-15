@@ -9,7 +9,7 @@
         "issue": "GET with account_id filter returns items with wrong account_id (2 items mismatched)",
         "impact": "Product launches not filtering correctly by account - violates F14 account scope requirement",
         "fix_priority": "MEDIUM",
-        "test_evidence": "Backend test line 369: Found 2 items with wrong account_id when filtering by account_id=8773878a-532e-4f5b-8419-fa7fff0af74d"
+        "test_evidence": "Backend test line 369: Found 2 items with wrong account_id when filtering by account_id=marketing-dash-fix"
       }
     ],
     "minor_issues": [

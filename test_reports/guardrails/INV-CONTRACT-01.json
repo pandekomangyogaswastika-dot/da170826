@@ -1,75 +1,21 @@
 {
   "gate": "INV-CONTRACT-01",
   "title": "Kontrak FE\u2194BE (duplicate route / FE\u2192route ada / orphan BE)",
-  "checked": 2283,
+  "checked": 2286,
   "counts": {
     "INFO": 18,
     "WARN": 57
   },
   "blocking": 0,
   "block_sev": [],
-  "duration_s": 8.74,
-  "ts": "2026-08-15 03:34:43",
+  "duration_s": 8.78,
+  "ts": "2026-08-15 19:08:39",
   "findings": [
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/purchase-orders${qs.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/PurchaseOrderModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/management/okr/dashboard{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/OKRTrackerModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/management/okr/objectives{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/OKRTrackerModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/wms/opname3/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/WMSOpnameScanModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/management/overview{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/ManagementOverviewModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/management/daily-output{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/ManagementOverviewModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/wms/pending/summary{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/WarehouseDashboard.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/org{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/HROrgChartModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/marketing/catalogs{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/CatalogManagementModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/material-issues{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RahazaMaterialIssueModule.jsx"
+      "msg": "FE memanggil `/api/fulfillment/orders/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/FulfillmentModule.jsx"
     },
     {
       "sev": "WARN",
@@ -86,20 +32,50 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/reports-hub/summary{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/ReportsHubModule.jsx"
+      "msg": "FE memanggil `/api/rahaza/attendance/permits/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/HRAttendanceSessionsModule.jsx"
     },
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/lms{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/HRLMSModule.jsx"
+      "msg": "FE memanggil `/api/dewi/onboarding{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/HROnboardingModule.jsx"
     },
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/buyers{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/BuyersModule.jsx"
+      "msg": "FE memanggil `/api/hr/expenses/travel/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/EmployeeTravelModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/purchase-orders${qs.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/PurchaseOrderModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/rnd/revisions${qs.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RnDRevisionsTab.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/periods/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RahazaPeriodsModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/assets{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/HRAssetModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/assets/labels/bulk{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/HRAssetModule.jsx"
     },
     {
       "sev": "WARN",
@@ -110,14 +86,56 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/rnd/styles/{}/revisions/compare${qs.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RnDRevisionCompare.jsx"
+      "msg": "FE memanggil `/api/wms/opname3/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/WMSOpnameScanModule.jsx"
     },
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/analytics/ai/${type === 'production' ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/AIInsightsModule.jsx"
+      "msg": "FE memanggil `/api/rahaza/payroll-runs/{}/pay-{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RahazaPayrollRunModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/management/okr/dashboard{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/OKRTrackerModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/management/okr/objectives{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/OKRTrackerModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RahazaSalaryAdjustmentModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/overtime{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RahazaOvertimeModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/reports-hub/summary{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/ReportsHubModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/recruitment{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/HRATSModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/wms/pending/summary{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/WMSModule.jsx"
     },
     {
       "sev": "WARN",
@@ -152,6 +170,84 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/management/overview{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/ManagementOverviewModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/management/daily-output{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/ManagementOverviewModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/3way-match{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/ThreeWayMatchModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/material-issues{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RahazaMaterialIssueModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/rahaza/finance/budgets/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/BudgetModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/marketing/catalogs{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/CatalogManagementModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/analytics/ai/${type === 'production' ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/AIInsightsModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/buyers{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/BuyersModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/rnd/styles/{}/revisions/compare${qs.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RnDRevisionCompare.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/org{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/HROrgChartModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/lms{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/HRLMSModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/hr/expenses/settlements/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/EmployeeTravelSettlementModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/kpi{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/KPIPortalModule.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
       "msg": "FE memanggil `/api/acc/purchase-requests{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
       "loc": "components/erp/AccessoryModule.jsx"
     },
@@ -164,8 +260,8 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RahazaSalaryAdjustmentModule.jsx"
+      "msg": "FE memanggil `/api/dewi/rnd/techpack/import/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/RnDTechPackModule.jsx"
     },
     {
       "sev": "WARN",
@@ -176,116 +272,8 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/kpi{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/KPIPortalModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/attendance/permits/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/HRAttendanceSessionsModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/rnd/techpack/import/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RnDTechPackModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/hr/expenses/travel/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/EmployeeTravelModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/hr/expenses/settlements/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/EmployeeTravelSettlementModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/periods/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RahazaPeriodsModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/overtime{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RahazaOvertimeModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/assets{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/HRAssetModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/assets/labels/bulk{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/HRAssetModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/onboarding{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/HROnboardingModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/finance/budgets/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/BudgetModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/rnd/revisions${qs.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RnDRevisionsTab.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/payroll-runs/{}/pay-{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/RahazaPayrollRunModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/recruitment{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/HRATSModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/fulfillment/orders/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/FulfillmentModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/rahaza/3way-match{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/ThreeWayMatchModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
       "msg": "FE memanggil `/api/notifications/categorized{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
       "loc": "components/erp/NotificationBell.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/marketing/advanced-ai/pricing/suggestions/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/marketing/AdvancedAIModule.jsx"
-    },
-    {
-      "sev": "WARN",
-      "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/marketing/reports/weekly/export-{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/marketing/WeeklyMeetingReportModule.jsx"
     },
     {
       "sev": "WARN",
@@ -302,14 +290,14 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/acc/valuation/report-schedule/send-now{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/accessory/AccessoryValuationAutomation.jsx"
+      "msg": "FE memanggil `/api/marketing/reports/weekly/export-{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/marketing/WeeklyMeetingReportModule.jsx"
     },
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/procurement/requests/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/asset/drawers/PRDetailDrawer.jsx"
+      "msg": "FE memanggil `/api/marketing/advanced-ai/pricing/suggestions/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/marketing/AdvancedAIModule.jsx"
     },
     {
       "sev": "WARN",
@@ -320,20 +308,32 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/procurement/requests/{}/{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/asset/drawers/PRDetailDrawer.jsx"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
       "msg": "FE memanggil `/api/hr/ai/attrition/predict${department ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
       "loc": "components/erp/hr/HRAttritionModule.jsx"
     },
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/client-portal{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/client/clientApi.js"
+      "msg": "FE memanggil `/api/acc/valuation/report-schedule/send-now{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/accessory/AccessoryValuationAutomation.jsx"
     },
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/cutting{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "components/erp/cutting/cuttingApi.js"
+      "msg": "FE memanggil `/api/dewi/maklon/pos${params.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "lib/maklonOrderAdapter.js"
+    },
+    {
+      "sev": "WARN",
+      "code": "FE_DEAD_CALL",
+      "msg": "FE memanggil `/api/dewi/client-portal{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/client/clientApi.js"
     },
     {
       "sev": "WARN",
@@ -350,8 +350,8 @@
     {
       "sev": "WARN",
       "code": "FE_DEAD_CALL",
-      "msg": "FE memanggil `/api/dewi/maklon/pos${params.toString() ` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
-      "loc": "lib/maklonOrderAdapter.js"
+      "msg": "FE memanggil `/api/cutting{}` \u2014 tak cocok route backend (triase: dihapus/typo atau path dinamis)",
+      "loc": "components/erp/cutting/cuttingApi.js"
     },
     {
       "sev": "INFO",

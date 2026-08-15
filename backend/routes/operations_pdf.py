@@ -19,6 +19,7 @@ from routes.operations_pdf_helpers import (
     _get_pdf_config, _filter_columns,
     _pdf_header_branded, _pdf_signature_block, _pdf_footer_branded,
     _pdf_data_table, _pdf_info_pairs,
+    CONTENT_W_PORTRAIT, CONTENT_W_LANDSCAPE, content_width,
 )
 from utils.pdf_common import get_company_profile, get_doc_settings
 from routes.rahaza_bom import get_bom_materials, _is_kglike
@@ -538,7 +539,7 @@ async def export_pdf(request: Request):
                     ('Vendor/CMT', po.get('vendor_name', '')), ('Status', po.get('status', '')),
                     ('Tanggal PO', _fmt_date(po.get('po_date'))), ('Deadline', _fmt_date(po.get('deadline'))),
                     ('Delivery Deadline', _fmt_date(po.get('delivery_deadline'))), ('Tipe', scope_label),
-                ], avail=786)
+                ], avail=CONTENT_W_LANDSCAPE)
             # Items table (lebar kolom proporsional + kolom angka rata-kanan)
             all_col_keys = ['no', 'serial', 'product', 'sku', 'size', 'color', 'qty', 'price', 'cmt']
             all_headers = ['No', 'Serial No', 'Produk', 'SKU', 'Size', 'Warna', 'Qty', 'Harga', 'CMT']
@@ -934,9 +935,16 @@ async def export_pdf(request: Request):
                 ('No PO', _safe_str(', '.join(_d_po_numbers) if _d_po_numbers else '-', 90)),
                 ('Customer', bs.get('customer_name', '')), ('Vendor', bs.get('vendor_name', '')),
                 ('Tanggal Dispatch', _fmt_date(items[0].get('dispatch_date', ''))), ('Dispatch #', str(dispatch_seq)),
-            ])
+            ], avail=CONTENT_W_LANDSCAPE)
             all_col_keys = ['no', 'po', 'serial', 'product', 'sku', 'size', 'color', 'ordered', 'this_dispatch', 'cumul_shipped', 'remaining']
-            headers = ['No', 'No. PO', 'Serial', 'Product', 'SKU', 'Size', 'Color', 'Ordered', 'This Dispatch', 'Cumul. Shipped', 'Remaining']
+            headers = ['No', 'No. PO', 'Serial', 'Produk', 'SKU', 'Size', 'Warna',
+                       'Qty Order', 'Dikirim Kali Ini', 'Total Dikirim', 'Sisa']
+            # FASE F — bobot lebar kolom per KEY supaya tetap benar walau sebagian
+            # kolom disembunyikan lewat konfigurasi PDF (`config['columns']`).
+            weight_map = {'no': 0.45, 'po': 1.4, 'serial': 1.0, 'product': 2.4, 'sku': 1.4,
+                          'size': 0.6, 'color': 0.85, 'ordered': 0.95, 'this_dispatch': 1.2,
+                          'cumul_shipped': 1.1, 'remaining': 0.75}
+            num_keys = {'ordered', 'this_dispatch', 'cumul_shipped', 'remaining'}
             data_rows = []
             for idx, item in enumerate(items, 1):
                 key = item.get('po_item_id') or item['id']
@@ -945,37 +953,51 @@ async def export_pdf(request: Request):
                     idx,
                     _safe_str(item.get('po_number')
                               or (_d_po_meta.get(item.get('po_id')) or {}).get('po_number', '')
-                              or bs.get('po_number', ''), 22),
-                    _safe_str(item.get('serial_number')), _safe_str(item.get('product_name')),
+                              or bs.get('po_number', ''), 24),
+                    _safe_str(item.get('serial_number')), _safe_str(item.get('product_name'), 60),
                     _safe_str(item.get('sku')), _safe_str(item.get('size')), _safe_str(item.get('color')),
-                    item.get('ordered_qty', 0), item.get('qty_shipped', 0), cum['shipped'],
-                    max(0, cum['ordered'] - cum['shipped'])
+                    f"{item.get('ordered_qty', 0):,}".replace(',', '.'),
+                    f"{item.get('qty_shipped', 0):,}".replace(',', '.'),
+                    f"{cum['shipped']:,}".replace(',', '.'),
+                    f"{max(0, cum['ordered'] - cum['shipped']):,}".replace(',', '.'),
                 ])
+            active_keys = all_col_keys
             if config and config.get('columns'):
                 headers, data_rows = _filter_columns(headers, all_col_keys, config['columns'], data_rows)
-            td = [headers] + data_rows
+                active_keys = [k for k in all_col_keys if k in config['columns']]
             total_this = sum(i.get('qty_shipped', 0) for i in items)
             total_cum = sum(v['shipped'] for v in cumulative_by_poi.values())
             total_ord = sum(v['ordered'] for v in cumulative_by_poi.values())
-            total_row = [''] * len(headers)
-            if len(total_row) >= 4:
-                total_row[-4] = total_ord
-                total_row[-3] = total_this
-                total_row[-2] = total_cum
-                total_row[-1] = max(0, total_ord - total_cum)
-                total_row[-5] = 'TOTAL' if len(total_row) > 5 else ''
-            td.append(total_row)
-            cw = [max(25, int(680 / len(headers)))] * len(headers)
-            t = Table(td, colWidths=cw, repeatRows=1)
-            t.setStyle(_pdf_table_style())
-            t.setStyle(_pdf_total_row_style())
-            t.setStyle(TableStyle([('ALIGN', (6, 0), (-1, -1), 'RIGHT')]))
-            elements.append(t)
+            totals_by_key = {
+                'ordered': total_ord, 'this_dispatch': total_this,
+                'cumul_shipped': total_cum, 'remaining': max(0, total_ord - total_cum),
+            }
+            # Baris TOTAL dibangun per KEY — dulu memakai indeks negatif
+            # (`total_row[-5] = 'TOTAL'`) sehingga label bisa mendarat di kolom
+            # yang salah begitu ada kolom disembunyikan.
+            total_row = []
+            label_placed = False
+            for k in active_keys:
+                if k in totals_by_key:
+                    total_row.append(f"{totals_by_key[k]:,}".replace(',', '.'))
+                elif not label_placed and k == 'product':
+                    total_row.append('TOTAL')
+                    label_placed = True
+                else:
+                    total_row.append('')
+            if not label_placed and total_row:
+                total_row[0] = 'TOTAL'
+            data_rows.append(total_row)
+            weights = [weight_map.get(k, 1.0) for k in active_keys]
+            right_cols = {i for i, k in enumerate(active_keys) if k in num_keys}
+            elements.append(_pdf_data_table(
+                headers, data_rows, weights=weights, right_cols=right_cols,
+                total_row=True, page='landscape'))
             sig_context = {
                 'buyer_name': bs.get('customer_name') or bs.get('vendor_name', ''),
                 'shipment_number': bs.get('shipment_number', ''),
             }
-            _pdf_signature_block(elements, doc_settings, sig_context)
+            _pdf_signature_block(elements, doc_settings, sig_context, page='landscape')
             _pdf_footer_branded(elements, profile, doc_settings)
             _build_pdf(buf, elements, page='landscape')
             fname = f"buyer_dispatch_{bs.get('shipment_number','')}_D{dispatch_seq}.pdf"
@@ -1024,7 +1046,7 @@ async def export_pdf(request: Request):
                 ('Status', bs.get('status', bs.get('ship_status', ''))),
                 ('Total Dispatch', str(total_dispatches)),
                 ('Jenis Dokumen', 'Gabungan lintas PO' if is_consolidated else 'Satu PO'),
-            ])
+            ], avail=CONTENT_W_LANDSCAPE)
             # Build cumulative summary per po_item (not per dispatch), grouped per PO
             poi_cumulative = {}
             for item in all_items:
@@ -1045,50 +1067,54 @@ async def export_pdf(request: Request):
                     }
                 poi_cumulative[key]['total_shipped'] += item.get('qty_shipped', 0)
             if not poi_cumulative:
-                elements.append(Paragraph("No dispatch items found for this shipment.", styles['Normal']))
+                elements.append(Paragraph("Belum ada item dispatch pada surat jalan ini.",
+                                          styles['Normal']))
             else:
-                td = [['No', 'No. PO', 'Serial', 'Product', 'SKU', 'Size', 'Color',
-                       'Ordered', 'Total Shipped', 'Remaining']]
-                # kelompokkan per PO supaya subtotal per PO bisa dicetak
-                groups = {}
-                for cum in poi_cumulative.values():
-                    groups.setdefault(cum['po_number'] or '-', []).append(cum)
-                subtotal_rows, idx = [], 0
-                for po_no in sorted(groups.keys()):
-                    rows = groups[po_no]
-                    for cum in rows:
-                        idx += 1
-                        remaining = max(0, cum['ordered_qty'] - cum['total_shipped'])
-                        td.append([idx, _safe_str(po_no, 22), _safe_str(cum['serial_number']),
-                                   _safe_str(cum['product_name']), _safe_str(cum['sku']),
-                                   _safe_str(cum['size']), _safe_str(cum['color']),
-                                   cum['ordered_qty'], cum['total_shipped'], remaining])
-                    s_ord = sum(c['ordered_qty'] for c in rows)
-                    s_shp = sum(c['total_shipped'] for c in rows)
-                    td.append(['', _safe_str(po_no, 22), '', '', '', '',
-                               f'SUBTOTAL {po_no}', s_ord, s_shp, max(0, s_ord - s_shp)])
-                    subtotal_rows.append(len(td) - 1)
+                # ── FASE F (2026-08-15) — DOKUMEN INI DULU TUMPANG TINDIH ─────
+                # Cacat yang diperbaiki, terbukti dari kode (bukan selera):
+                #   1. Baris "SUBTOTAL {po}" ditulis ke KOLOM 'Color' yang lebarnya
+                #      44 pt memakai `Table()` mentah berisi STRING (bukan
+                #      Paragraph) ⇒ tidak ada word-wrap ⇒ teks meluber menimpa
+                #      kolom angka di sebelahnya ("SUBTOTAL test-po00" + "100").
+                #   2. `cw` hardcode berjumlah 569 pt sementara lebar konten A4
+                #      landscape margin 12 mm = 773,8 pt ⇒ tabel hanya mengisi 73%
+                #      halaman padahal margin kiri-kanan terlihat lega.
+                #   3. Subtotal per PO DIHAPUS atas keputusan pemilik: dokumen ini
+                #      adalah REKAP KUMULATIF, dan rincian per pengiriman sudah
+                #      punya surat jalannya sendiri (per dispatch). Kolom "No. PO"
+                #      tetap ada sehingga asal setiap baris tidak hilang.
+                headers = ['No', 'No. PO', 'Serial', 'Produk', 'SKU', 'Size', 'Warna',
+                           'Qty Order', 'Total Dikirim', 'Sisa']
+                weights = [0.45, 1.5, 1.1, 2.6, 1.5, 0.6, 0.9, 0.95, 1.15, 0.8]
+                right_cols = {7, 8, 9}
+                data_rows = []
+                for idx, cum in enumerate(
+                        sorted(poi_cumulative.values(),
+                               key=lambda c: (c['po_number'] or '', c['sku'] or '')), 1):
+                    remaining = max(0, cum['ordered_qty'] - cum['total_shipped'])
+                    data_rows.append([
+                        idx, _safe_str(cum['po_number'] or '-', 24),
+                        _safe_str(cum['serial_number']), _safe_str(cum['product_name'], 60),
+                        _safe_str(cum['sku']), _safe_str(cum['size']), _safe_str(cum['color']),
+                        f"{cum['ordered_qty']:,}".replace(',', '.'),
+                        f"{cum['total_shipped']:,}".replace(',', '.'),
+                        f"{remaining:,}".replace(',', '.'),
+                    ])
                 total_ordered = sum(v['ordered_qty'] for v in poi_cumulative.values())
                 total_shipped = sum(v['total_shipped'] for v in poi_cumulative.values())
                 total_remaining = max(0, total_ordered - total_shipped)
-                td.append(['', '', '', '', '', '', 'TOTAL', total_ordered, total_shipped,
-                           total_remaining])
-                cw = [22, 78, 55, 92, 68, 34, 44, 50, 66, 60]
-                t = Table(td, colWidths=cw, repeatRows=1)
-                t.setStyle(_pdf_table_style())
-                t.setStyle(_pdf_total_row_style())
-                t.setStyle(TableStyle([('ALIGN', (7, 0), (-1, -1), 'RIGHT')]))
-                for ri in subtotal_rows:
-                    t.setStyle(TableStyle([
-                        ('BACKGROUND', (0, ri), (-1, ri), colors.HexColor('#EEF2F7')),
-                        ('FONTNAME', (0, ri), (-1, ri), 'Helvetica-Bold'),
-                    ]))
-                elements.append(t)
+                data_rows.append(['', '', '', 'TOTAL', '', '', '',
+                                  f"{total_ordered:,}".replace(',', '.'),
+                                  f"{total_shipped:,}".replace(',', '.'),
+                                  f"{total_remaining:,}".replace(',', '.')])
+                elements.append(_pdf_data_table(
+                    headers, data_rows, weights=weights, right_cols=right_cols,
+                    total_row=True, page='landscape'))
             sig_context = {
                 'buyer_name': bs.get('customer_name') or bs.get('vendor_name', ''),
                 'shipment_number': bs.get('shipment_number', ''),
             }
-            _pdf_signature_block(elements, doc_settings, sig_context)
+            _pdf_signature_block(elements, doc_settings, sig_context, page='landscape')
             _pdf_footer_branded(elements, profile, doc_settings)
             _build_pdf(buf, elements, page='landscape')
             fname = f"Buyer-Shipment-{bs.get('shipment_number', sid)}-Kumulatif.pdf"

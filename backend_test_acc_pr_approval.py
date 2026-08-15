@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, "/app/backend")
 
-BASE = "https://procurement-workflow-15.preview.emergentagent.com"
+BASE = "https://marketing-dash-fix.preview.emergentagent.com"
 PW = "Dewi@123"
 ADMIN = ("admin@garment.com", "Admin@123")
 

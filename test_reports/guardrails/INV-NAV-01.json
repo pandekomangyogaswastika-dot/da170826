@@ -1,7 +1,7 @@
 {
   "gate": "INV-NAV-01",
   "title": "Integritas navigasi (single/ghost/duplikat/depth + flat/max/label/duptab/deadcall)",
-  "checked": 2421,
+  "checked": 2423,
   "counts": {},
   "blocking": 0,
   "block_sev": [
@@ -9,6 +9,6 @@
     "HIGH"
   ],
   "duration_s": 3.62,
-  "ts": "2026-08-15 03:34:47",
+  "ts": "2026-08-15 19:08:43",
   "findings": []
 }

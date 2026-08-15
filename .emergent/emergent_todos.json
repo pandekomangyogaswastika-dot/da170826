@@ -1,42 +1,42 @@
 [
   {
-    "content": "Fase A: gate.sh diperbaiki + INV-F13 + test_core_f13 HIJAU + sabotase MERAH",
+    "content": "Fase E: SSOT kapasitas kirim + endpoint + validator + UI kolom jelas + tab Kekurangan Kirim",
     "status": "completed"
   },
   {
-    "content": "BUG-1/2/3 pemilik: master produk, audit 582 form, kartu & kontras — terverifikasi testing agent",
+    "content": "Fase E2: permak sukses menambah qty_reworked_ok (sabotase MERAH terbukti)",
     "status": "completed"
   },
   {
-    "content": "Penjaga INV-F14 + INV-F15 terdaftar, gate penuh HIJAU",
+    "content": "Fase E5 (bug baru): pagar sebelum insert — surat jalan yatim ditutup + migrasi",
     "status": "completed"
   },
   {
-    "content": "Fase B: 5 layar UANG/STOK (HRKasbon, KasbonStaff, Receiving, ProcurementRequest, AccessoriesDashboard) → pola tabel F10",
+    "content": "Fase F1+F2: PDF surat jalan full-width, 0 tumpang tindih, subtotal per PO dibuang",
     "status": "completed"
   },
   {
-    "content": "Fase B: Cacat kelas Tailwind DINAMIS (21 di 7 berkas) — lib/tone.js + audit + penjaga",
+    "content": "Fase H-1: Kirim Material CMT → MI otomatis + potong stok + jurnal (internal saja)",
     "status": "completed"
   },
   {
-    "content": "Fase B: test_core_f13 diperluas ke 9 layar (84/84) + baseline KARTU-SAJA 74→69",
+    "content": "Gate INV-F16/F17/F18 didaftarkan — gate.sh VERDICT HIJAU 40 gate",
     "status": "completed"
   },
   {
-    "content": "Fase B: rebuild bundel + gate penuh HIJAU + verifikasi visual 5 layar baru",
-    "status": "in_progress"
+    "content": "Rebuild frontend + screenshot UI Fase E (kolom baru + tab Kekurangan Kirim)",
+    "status": "completed"
   },
   {
-    "content": "Fase B: testing_agent_v3 untuk 5 layar baru + regresi",
-    "status": "pending"
+    "content": "testing_agent iterasi 66: 0 bug; backend_test.py yang ditimpa sudah dipulihkan",
+    "status": "completed"
   },
   {
-    "content": "Dokumentasi: plan.md + CHANGELOG.md untuk Fase B",
-    "status": "pending"
+    "content": "plan.md + memory/CHANGELOG.md diperbarui; artefak uji dibersihkan",
+    "status": "completed"
   },
   {
-    "content": "Fase C: F9 Settlement/Pencairan (pemetaan kolom oleh staf, tanpa menebak format)",
+    "content": "BACKLOG berikutnya: F3/F4 (5 PDF tersering) · H-2 tombol BUAT MI · H-3 menu Buat Barcode · H-4 hapus Scan Gudang & Kirim CMT · G penomoran · D Dashboard Marketing",
     "status": "pending"
   }
 ]

@@ -7,7 +7,7 @@ import requests
 import sys
 from typing import Dict, Any, List
 
-BASE_URL = "https://change-log-deploy.preview.emergentagent.com"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
 
 # Test credentials
 ADMIN = {"email": "admin@garment.com", "password": "Admin@123"}

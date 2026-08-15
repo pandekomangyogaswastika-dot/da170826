@@ -13,6 +13,25 @@ from utils.waktu import now_wib
 logger = logging.getLogger(__name__)
 
 
+# ─── LEBAR KONTEN HALAMAN (FASE F, 2026-08-15) ───────────────────────────────
+# Dulu lebar tersedia ditulis sebagai angka ajaib: 515 (potrait) dan 786
+# (landscape). Keduanya SALAH terhadap `_build_pdf()` yang memakai A4 dengan
+# margin 12 mm:
+#     potrait   : 595,28 pt − 2 × 34,02 pt = 527,2 pt  (dulu 515 → 12 pt terbuang)
+#     landscape : 841,89 pt − 2 × 34,02 pt = 773,8 pt  (dulu 786 → 12 pt MELIMPAH
+#                 keluar halaman, ReportLab memampatkan/meluberkan tabel)
+# Akibat yang terlihat pemilik: tabel surat jalan hanya mengisi sebagian halaman
+# padahal margin kiri-kanan lebar, dan sebagian dokumen melebar keluar.
+PDF_MARGIN_PT = 12 * 2.834645669  # 12 mm dalam point
+CONTENT_W_PORTRAIT = round(595.276 - 2 * PDF_MARGIN_PT, 1)    # ≈ 527,2
+CONTENT_W_LANDSCAPE = round(841.89 - 2 * PDF_MARGIN_PT, 1)    # ≈ 773,8
+
+
+def content_width(page=None) -> float:
+    """Lebar konten yang BENAR-BENAR tersedia — satu sumber untuk semua tabel."""
+    return CONTENT_W_LANDSCAPE if page == 'landscape' else CONTENT_W_PORTRAIT
+
+
 # ─── PDF Styling Helpers ─────────────────────────────────────────────────────
 def _pdf_styles():
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -48,7 +67,7 @@ def _pdf_total_row_style():
 
 
 # ─── Shared layout builders (fix overlap + lebar kolom konsisten) ─────────────
-def _pdf_info_pairs(elements, info_pairs, avail=515):
+def _pdf_info_pairs(elements, info_pairs, avail=CONTENT_W_PORTRAIT):
     """Blok info (label: value) 2-kolom-pasang dengan value auto-wrap (anti-tumpang-tindih)."""
     from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import ParagraphStyle
@@ -100,7 +119,7 @@ def _pdf_data_table(headers, rows, *, weights=None, right_cols=None, total_row=F
 
     n = len(headers)
     right = set(right_cols or [])
-    avail = 786 if page == 'landscape' else 515
+    avail = content_width(page)
     if not weights or len(weights) != n:
         weights = [1] * n
     tot = float(sum(weights)) or 1.0
@@ -135,7 +154,8 @@ def _build_pdf(buf, elements, page=None):
     return buf
 
 
-def _pdf_header(elements, company_name, title, subtitle=None, info_pairs=None):
+def _pdf_header(elements, company_name, title, subtitle=None, info_pairs=None,
+                avail=CONTENT_W_PORTRAIT):
     from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.units import mm
     styles = _pdf_styles()
@@ -145,7 +165,7 @@ def _pdf_header(elements, company_name, title, subtitle=None, info_pairs=None):
         elements.append(Paragraph(subtitle, styles['Normal']))
     elements.append(Spacer(1, 4*mm))
     if info_pairs:
-        _pdf_info_pairs(elements, info_pairs, avail=515)
+        _pdf_info_pairs(elements, info_pairs, avail=avail)
     return elements
 
 
@@ -163,12 +183,12 @@ def _pdf_footer(elements):
 # konsisten dengan framework `utils/pdf_common.py` (payslip & SJ SSOT). Tidak
 # mengubah `_pdf_header`/`_pdf_footer` lama supaya generator lain tak terpengaruh.
 
-def _pdf_header_branded(elements, profile, doc_settings, title, info_pairs=None, avail=515):
+def _pdf_header_branded(elements, profile, doc_settings, title, info_pairs=None, avail=CONTENT_W_PORTRAIT):
     """Header dokumen dengan profil perusahaan dinamis (kop) + judul.
 
     profile      : dict dari utils.pdf_common.get_company_profile()
     doc_settings : dict dari utils.pdf_common.get_doc_settings() (header_line1/2, show_logo)
-    avail        : lebar konten (515 potrait / 786 landscape)
+    avail        : lebar konten (CONTENT_W_PORTRAIT / CONTENT_W_LANDSCAPE)
     """
     from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
     from reportlab.lib import colors
@@ -210,11 +230,15 @@ def _pdf_header_branded(elements, profile, doc_settings, title, info_pairs=None,
     return elements
 
 
-def _pdf_signature_block(elements, doc_settings, context, max_cols=3):
+def _pdf_signature_block(elements, doc_settings, context, max_cols=3, page=None):
     """Blok tanda tangan configurable dari doc_settings['signatures'].
 
     Menghormati show_signatures. Nama penandatangan ditentukan via
     utils.pdf_common.resolve_signature_name (custom / dari field / kosong).
+
+    FASE F: lebar kolom mengikuti LEBAR KONTEN halaman (`page`), bukan angka
+    ajaib 500 pt. Di halaman landscape blok tanda tangan dulu menumpuk di kiri
+    dan menyisakan ruang kosong lebar di kanan.
     """
     from reportlab.platypus import Spacer, Table, TableStyle
     from reportlab.lib import colors
@@ -236,7 +260,7 @@ def _pdf_signature_block(elements, doc_settings, context, max_cols=3):
         roles.append(_safe_str(sd.get('role_label', ''), 30))
 
     n = len(sigs)
-    col_w = [int(500 / n)] * n
+    col_w = [content_width(page) / n] * n
     sig_data = [labels, [''] * n, names, roles]
     elements.append(Spacer(1, 14 * mm))
     st = Table(sig_data, colWidths=col_w)

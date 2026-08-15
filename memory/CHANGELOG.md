@@ -1,3 +1,61 @@
+# [2026-08-15 #13] **FASE E · F1/F2 · H-1** — satu rumus sisa kirim · PDF tidak tumpang tindih · kirim material memotong stok
+
+## Akar semua keluhan dispatch: `qty_actual` SUDAH netto lolos QC
+`dewi_cmt_packing.py` membuktikannya: `arrived = qty_actual + reject_qty`. Layar lama
+menghitung `qty_actual − reject_qty` ⇒ **memotong reject dua kali** ("chip 90 kok jadi 80").
+Backend justru benar; layarnya yang salah. Ditambah layar tidak mengurangi qty yang sudah
+dikirim ⇒ form mem-prefill angka yang PASTI ditolak.
+
+Ada **tiga** rumus untuk satu pertanyaan. Sekarang satu — `core/dispatch_capacity.py`:
+
+    sisa bisa kirim = lolos QC + hasil permak − sudah dikirim
+
+`sudah dikirim` per po_item melintasi SEMUA surat jalan buyer (bukan hanya receipt terpilih).
+Dipakai bersama oleh layar, endpoint `/api/buyer-dispatch-capacity`, pagar
+`POST /api/buyer-shipments`, dan tab Kekurangan Kirim.
+
+## Reject yang diperbaiki akhirnya bisa dikirim
+`apply_rework_outcome()` dulu hanya menaikkan stok FG + buku kuantitas job, tidak pernah
+menyentuh `cmt_receipt_lines` yang justru dibaca pagar kirim ⇒ hasil permak MUSTAHIL dikirim.
+Sekarang menambah **field baru** `qty_reworked_ok` — bukan menaikkan `qty_actual`/menurunkan
+`reject_qty`, karena angka itu hasil inspeksi saat barang datang; mengubahnya retroaktif akan
+menggeser laporan variance, AP vendor (dibayar per qty lolos), dan gate INV-14 diam-diam.
+`retur_ke_cmt` dikecualikan (barangnya masuk lagi lewat penerimaan CMT baru).
+
+## Cacat BARU yang ditemukan: SURAT JALAN YATIM
+`POST /api/buyer-shipments` menulis header surat jalan SEBELUM pagar qty ⇒ setiap Simpan
+yang ditolak meninggalkan dokumen "0 / 0 pcs" status Pending, nomor ikut terpakai, dan
+pemakai menyangka pengirimannya "sudah pernah dilakukan". Pagar dipindah ke atas + migrasi
+`2026_08_15_hapus_surat_jalan_buyer_yatim.py` (dry-run default) membersihkan 2 dokumen.
+Nomor tidak didaur ulang. Dijaga invarian E-5.
+
+## PDF: sebabnya terukur, bukan selera
+Baris `SUBTOTAL {po}` ditulis ke kolom 'Color' selebar **44 pt** memakai `Table()` mentah
+berisi STRING (tanpa word-wrap) ⇒ meluber menimpa kolom angka. Lebar kolom hardcode
+**569 pt** vs lebar konten A4 landscape **773,8 pt** ⇒ terisi 73%. Helper malah memakai
+`avail = 786` (12 pt MELIMPAH keluar halaman). Baris TOTAL memakai indeks negatif sehingga
+labelnya bisa mendarat di kolom salah begitu ada kolom disembunyikan.
+Semua diperbaiki; subtotal per PO dibuang dari dokumen kumulatif (kolom No. PO tetap ada).
+Terukur: tumpang tindih **0**, tabel mengisi **100%** lebar konten, **0** teks keluar margin.
+
+## Kirim material ke CMT akhirnya memotong stok (H-1)
+`POST /api/vendor-shipments` dulu hanya menulis surat jalan + item **GARMEN** — bukan
+material. NOL mutasi stok, NOL dokumen pengeluaran, NOL jurnal ⇒ kain & aksesoris keluar
+gudang tanpa jejak. Sekarang (PO **INTERNAL**): MI terbit otomatis dari BOM, lokasi dipilih
+sistem, stok berkurang, jurnal terposting, tautan dua arah tersimpan.
+Inti `approve_mi` DIEKSTRAK ke `core/material_issue_engine.issue_material_issue()` supaya
+"mengeluarkan material" punya SATU definisi. Stok kurang ⇒ surat jalan DITOLAK + dirollback
+(0 dokumen tertinggal, 0 stok terpotong sebagian). **MAKLON dikecualikan** — materialnya
+milik klien; memotong stok DA akan menghilangkan kain milik DA (invarian H1-6).
+Ditambah `POST /api/vendor-shipments/material-preview` + panel di form supaya kekurangan
+stok terlihat SEBELUM Simpan.
+
+## Bukti
+`bash scripts/gate.sh` **HIJAU** 40 gate (baru INV-F16 · INV-F17 · INV-F18) ·
+E 11/11 · F 5/5 · H-1 6/6 · testing_agent iterasi 66: backend 100%, 0 bug ·
+**dibuktikan MERAH lewat sabotase** dua kali (mematikan `qty_reworked_ok` ⇒ "sisa 0 pcs";
+mematikan penerbitan MI ⇒ "stok turun 0").
+
 # [2026-08-14 #12c] **FASE C / F9** — Pencairan marketplace: INPUT MANUAL (blokir BD-2 dihapus, bukan dihindari)
 
 Aturan proyek melarang F9 dimulai tanpa contoh berkas asli: *"pemetaan kolom uang
@@ -2695,7 +2753,7 @@ Selisih 20 pcs = **4 run kebocoran × 5 pcs** (Temuan 1) — `plan.md:115` sendi
 fiktif** (bagian EKSEKUSI menghapus baris stok lalu insert dari baseline) ·
 `tests/backend_test_fase12.py` hard-assert `9667750 (±100)`/`32220 (±10)` ⇒ **FAIL PASTI**.
 * **Bonus temuan:** berkas uji yang sama mematok `BASE_URL` ke preview container lama
-  (`https://rnd-cockpit-hub.preview.emergentagent.com`) yang **sudah mati** ⇒ menguji host salah.
+  (`https://marketing-dash-fix.preview.emergentagent.com`) yang **sudah mati** ⇒ menguji host salah.
 * **Fix:** SSOT tunggal `scripts/lib/acc_baseline.py` — semua total **DITURUNKAN** dari tabel
   `STOCK_BASELINE × COST_BASELINE` + `assert` pengaman (qty **32.200**, nilai **Rp 9.663.750**,
   8 bernilai / 2 belum, unvalued_qty 3.300). `cleanup_fase10_qa.py` &

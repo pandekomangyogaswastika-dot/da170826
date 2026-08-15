@@ -20,7 +20,7 @@ import requests
 import sys
 import os
 
-API = os.environ.get('REACT_APP_BACKEND_URL', 'https://da-repo-continue.preview.emergentagent.com')
+API = os.environ.get('REACT_APP_BACKEND_URL', 'https://marketing-dash-fix.preview.emergentagent.com')
 
 class TestBug1MasterProductLinking:
     def __init__(self):

@@ -6,7 +6,14 @@ export default function Modal({ title, children, onClose, size = 'md' }) {
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
+    xl: 'max-w-4xl',
+    // FASE E: dibutuhkan form yang punya TABEL banyak kolom (mis. dispatch ke
+    // buyer: Order · Lolos QC · Hasil Permak · Sudah Dikirim · Sisa · Qty Kirim).
+    // Di `xl` kolomnya terpaksa membungkus sampai 3 baris per sel sehingga
+    // angkanya justru sulit dibandingkan — padahal membandingkan angka itulah
+    // gunanya tabel ini.
+    '2xl': 'max-w-6xl',
+    '3xl': 'max-w-[88rem]',
   };
 
   return (

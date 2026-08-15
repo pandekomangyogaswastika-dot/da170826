@@ -146,7 +146,7 @@ async def submit_mi(mid: str, request: Request):
 
 
 @router.post("/material-issues/{mid}/approve")
-async def approve_mi(mid: str, request: Request):  # noqa: C901
+async def approve_mi(mid: str, request: Request):
     user = await _require_mi_approver(request)
     db = get_db()
     mi = await db.rahaza_material_issues.find_one({"id": mid}, {"_id": 0})
@@ -158,86 +158,29 @@ async def approve_mi(mid: str, request: Request):  # noqa: C901
         {"id": mid},
         {"$set": {"approved_at": _now(), "approved_by": user["id"], "approved_by_name": user.get("name", ""), "updated_at": _now()}}
     )
-    body = {}
     try:
         body = await request.json()
     except Exception:
         body = {}
-    loc_overrides = body.get("location_overrides") or {}
-    plan = []
-    shortages = []
-    raw_items = list(mi.get("items") or [])
-    pairs = set()
-    for it in raw_items:
-        loc = loc_overrides.get(it["material_id"]) or it.get("location_id")
-        if loc and float(it.get("qty_required") or 0) > 0:
-            pairs.add((it["material_id"], loc))
-    stock_map = {}
-    if pairs:
-        mids = list({p[0] for p in pairs})
-        locs = list({p[1] for p in pairs})
-        async for s in db.rahaza_material_stock.find({"material_id": {"$in": mids}, "location_id": {"$in": locs}}):
-            stock_map[(s.get("material_id"), s.get("location_id"))] = s
-    for it in raw_items:
-        loc = loc_overrides.get(it["material_id"]) or it.get("location_id")
-        if not loc:
-            raise HTTPException(400, f"Item belum punya lokasi: material {it.get('material_id')}.")
-        qty = float(it.get("qty_required") or 0)
-        if qty <= 0:
-            continue
-        stock = stock_map.get((it["material_id"], loc))
-        avail = float((stock or {}).get("qty") or 0)
-        if avail < qty:
-            shortages.append({"material_id": it["material_id"], "required": qty, "available": avail, "location_id": loc})
-        plan.append({"material_id": it["material_id"], "location_id": loc, "qty": qty, "item_id": it["id"]})
-    if shortages:
-        raise HTTPException(400, {"message": "Stok tidak cukup untuk issue.", "shortages": shortages})
-    from core import stock_service
-    race_failures = []
-    for p in plan:
-        try:
-            # Atomic + race-safe (guarded update di dalam service) + jaga alias & available (INV-4).
-            await stock_service.issue(
-                p["material_id"], p["location_id"], p["qty"],
-                ref={"source": "material_issue", "mi_number": mi.get("mi_number"),
-                     "item_id": p.get("item_id"),
-                     "ref_type": "wo_issue" if mi.get("work_order_id") else "manual_issue",
-                     "ref_id": mi["id"]},
-                actor={"id": str(user.get("id") or ""), "email": user.get("email", "")},
-                db=db,
-            )
-        except stock_service.InsufficientStock:
-            race_failures.append({"material_id": p["material_id"], "location_id": p["location_id"], "required": p["qty"]})
-            continue
-        await _log_movement(db, user,
-            type="issue", material_id=p["material_id"], qty=p["qty"],
-            from_location_id=p["location_id"], to_location_id=None,
-            ref_type="wo_issue" if mi.get("work_order_id") else "manual_issue",
-            ref_id=mi["id"], notes=f"MI {mi['mi_number']}",
-        )
-    if race_failures:
-        raise HTTPException(409, {"message": "Stok habis karena concurrent issue.", "failures": race_failures})
-    new_items = []
-    for it in (mi.get("items") or []):
-        new_items.append({**it, "qty_issued": float(it.get("qty_required") or 0),
-                         "location_id": loc_overrides.get(it["material_id"]) or it.get("location_id")})
-    await db.rahaza_material_issues.update_one(
-        {"id": mid},
-        {"$set": {"items": new_items, "status": "issued", "issued_at": _now(), "issued_by": user["id"], "updated_at": _now()}}
-    )
-    await log_activity(user["id"], user.get("name", ""), "approve+issue", "rahaza.mi", mi["mi_number"])
-    out = await db.rahaza_material_issues.find_one({"id": mid}, {"_id": 0})
-    await _enrich_mi(db, out)
-    posting_result = None
+    # ── FASE H-1 (2026-08-15) — INTI PENGELUARAN DIPINDAH KE SATU MESIN ───────
+    # Isi fungsi ini (validasi stok per lokasi → `stock_service.issue()` atomik →
+    # catat movement → posting jurnal) DIEKSTRAK ke `core.material_issue_engine`
+    # supaya "mengeluarkan material dari gudang" punya SATU definisi. Alasannya
+    # bukan kerapian: "Kirim Material CMT" kini menerbitkan MI otomatis, dan
+    # kalau ia menyalin logikanya sendiri kita akan punya DUA cara memotong stok
+    # yang bisa berbeda diam-diam — cacat yang persis sama seperti tiga rumus
+    # kapasitas kirim di Fase E.
+    from core import material_issue_engine as mie
     try:
-        posting_result = await post_inventory_issue(db, out, user)
-    except Exception as e:
-        log.exception("Inventory issue auto-post failed")
-        posting_result = {"ok": False, "error": str(e)}
-    out_refresh = await db.rahaza_material_issues.find_one({"id": mid}, {"_id": 0})
-    await _enrich_mi(db, out_refresh)
-    out_refresh["_posting_result"] = posting_result
-    return serialize_doc(out_refresh)
+        out = await mie.issue_material_issue(
+            db, mi, user, loc_overrides=body.get("location_overrides") or {})
+    except mie.MaterialShortage as e:
+        raise HTTPException(400, {"message": "Stok tidak cukup untuk issue.",
+                                  "shortages": e.shortages})
+    except mie.BomMissing as e:
+        raise HTTPException(400, str(e))
+    await log_activity(user["id"], user.get("name", ""), "approve+issue", "rahaza.mi", mi["mi_number"])
+    return serialize_doc(out)
 
 
 @router.post("/material-issues/{mid}/reject")

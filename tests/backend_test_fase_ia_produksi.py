@@ -21,7 +21,7 @@ import requests
 import sys
 from datetime import datetime
 
-BASE_URL = "https://rnd-cockpit-hub.preview.emergentagent.com/api"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com/api"
 
 class FaseIAProductionTester:
     def __init__(self):

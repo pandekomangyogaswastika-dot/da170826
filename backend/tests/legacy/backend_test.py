@@ -16,7 +16,7 @@ import subprocess
 from datetime import datetime
 
 # Public endpoint from frontend/.env
-API = "https://rnd-cockpit-hub.preview.emergentagent.com"
+API = "https://marketing-dash-fix.preview.emergentagent.com"
 
 class OpnameConsolidationTester:
     def __init__(self):

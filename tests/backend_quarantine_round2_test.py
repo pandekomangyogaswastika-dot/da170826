@@ -8,7 +8,7 @@ from datetime import datetime
 
 class QuarantineBackendTester:
     def __init__(self):
-        self.base_url = os.environ.get("REACT_APP_BACKEND_URL", "https://rnd-cockpit-hub.preview.emergentagent.com")
+        self.base_url = os.environ.get("REACT_APP_BACKEND_URL", "https://marketing-dash-fix.preview.emergentagent.com")
         self.token = None
         self.tests_run = 0
         self.tests_passed = 0

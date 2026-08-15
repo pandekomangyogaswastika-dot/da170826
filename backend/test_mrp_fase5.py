@@ -6,7 +6,7 @@ import requests
 import sys
 
 # Use PUBLIC endpoint from frontend .env
-BASE_URL = "https://rnd-cockpit-hub.preview.emergentagent.com"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
 API_PREFIX = "/api"
 
 # Test credentials

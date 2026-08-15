@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from environment
-BACKEND_URL = "https://rnd-cockpit-hub.preview.emergentagent.com/api"
+BACKEND_URL = "https://marketing-dash-fix.preview.emergentagent.com/api"
 
 # Test credentials
 ADMIN_EMAIL = "admin@garment.com"

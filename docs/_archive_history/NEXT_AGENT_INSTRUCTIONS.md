@@ -145,7 +145,7 @@ Selalu gunakan SSOT collections ini (BUKAN duplikasi baru):
 ## 🔑 Auth & Access
 
 ```
-Production URL: https://rnd-cockpit-hub.preview.emergentagent.com
+Production URL: https://marketing-dash-fix.preview.emergentagent.com
 Admin:          admin@garment.com / Admin@123
 JWT Header:     Authorization: Bearer <token>
 Expiry:         24 hours

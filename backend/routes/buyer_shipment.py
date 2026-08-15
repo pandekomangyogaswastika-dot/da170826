@@ -119,71 +119,56 @@ async def _validate_source_receipts_cap(db, source_receipt_ids: list, items_data
             'Semua source_receipt_ids harus sudah SELESAI QC. Ditolak: ' +
             ', '.join(f"{r.get('receipt_code','?')}({r.get('status')})" for r in non_approved)
         )
-    # Phase D: cap per PO-ITEM (po_item_id) across all source receipts. SKU can
-    # collide across different POs in a consolidated surat jalan, so po_item_id is
-    # the safe key. Lines missing po_item_id fall back to a sku-bucket key.
+    # ── FASE E (2026-08-15) — SATU SSOT KAPASITAS KIRIM ──────────────────────
+    # DULU pagar ini punya rumusnya SENDIRI dan layar punya rumus LAIN, sehingga
+    # form mem-prefill angka yang pasti ditolak di sini (keluhan pemilik: "Maks
+    # (dari CMT) 100 tapi disimpan katanya maksimal 50"). Sekarang keduanya
+    # membaca `core.dispatch_capacity` — kalau rumusnya berubah, dua-duanya ikut.
+    # Perubahan nyata dibanding versi lama:
+    #   · qty sudah-dikirim dihitung per po_item MELINTASI SEMUA surat jalan
+    #     buyer (bukan hanya yang memakai receipt terpilih) — definisi yang sama
+    #     dengan kolom "Sudah Dikirim" yang dilihat pemakai.
+    #   · hasil PERMAK (`qty_reworked_ok`) ikut menambah kapasitas, supaya barang
+    #     reject yang sudah diperbaiki BISA dikirim (dulu mustahil selamanya).
+    from core import dispatch_capacity as dcap
+    cap_rows = await dcap.map_for_validation(
+        db, receipt_ids=list(source_receipt_ids), items_data=items_data)
     receipt_lines = await db.cmt_receipt_lines.find(
         {'receipt_id': {'$in': list(source_receipt_ids)}}, {'_id': 0}
     ).to_list(None)
 
-    def _key(poi, sku):
-        return f"poi:{poi}" if poi else f"sku:{(sku or '').strip()}"
-
-    actual_by_key = {}
-    label_by_key = {}
-    for ln in receipt_lines:
-        k = _key(ln.get('po_item_id'), ln.get('sku_code'))
-        actual_by_key[k] = actual_by_key.get(k, 0) + int(ln.get('qty_actual', 0) or 0)
-        label_by_key.setdefault(k, (ln.get('sku_code') or ln.get('po_item_id') or '?'))
-
-    # Sum already dispatched to buyer FROM these same source_receipt_ids.
-    prior_dispatch = await db.buyer_shipments.find(
-        {'source_receipt_ids': {'$in': list(source_receipt_ids)},
-         'receiver_type': RECEIVER_BUYER},
-        {'_id': 0, 'id': 1}
-    ).to_list(None)
-    prior_shipment_ids = [d['id'] for d in prior_dispatch]
-    prior_items = await db.buyer_shipment_items.find(
-        {'shipment_id': {'$in': prior_shipment_ids}}, {'_id': 0}
-    ).to_list(None) if prior_shipment_ids else []
-    dispatched_by_key = {}
-    for it in prior_items:
-        k = _key(it.get('po_item_id'), it.get('sku'))
-        # GAP F (audit 2026-07-31) — SATU definisi kapasitas kirim: qty EFEKTIF
-        # DITERIMA buyer (`qty_received` bila sudah diisi, else `qty_shipped`).
-        # Dulu memakai `qty_shipped` mentah sehingga selisih terima buyer TIDAK
-        # pernah membuka kapasitas kirim ulang (400 "Maksimal kirim: 0 pcs"),
-        # padahal pagar kedua (produced-cap) sudah memakai qty diterima →
-        # dua definisi, yang ketat menang, kirim ulang mustahil.
-        eff = (int(it['qty_received']) if it.get('qty_received') is not None
-               else int(it.get('qty_shipped', 0) or 0))
-        dispatched_by_key[k] = dispatched_by_key.get(k, 0) + eff
-
-    # Now check request per PO-ITEM
     requested_by_key = {}
+    label_by_key = {}
     for it in items_data:
         q = int(it.get('qty_shipped', 0) or 0)
         if q > 0:
-            k = _key(it.get('po_item_id'), it.get('sku'))
+            k = dcap.line_key(it.get('po_item_id'), it.get('sku'))
             requested_by_key[k] = requested_by_key.get(k, 0) + q
             label_by_key.setdefault(k, (it.get('sku') or it.get('po_item_id') or '?'))
 
     for k, req_qty in requested_by_key.items():
-        actual = actual_by_key.get(k, 0)
-        already = dispatched_by_key.get(k, 0)
-        max_avail = max(0, actual - already)
+        row = cap_rows.get(k) or {}
+        good = int(row.get('good_from_cmt', 0) or 0)
+        fixed = int(row.get('reworked_ok', 0) or 0)
+        already = int(row.get('dispatched', 0) or 0)
+        max_avail = int(row.get('shippable', max(0, good + fixed - already)) or 0)
         if req_qty > max_avail:
+            label = row.get('sku') or label_by_key.get(k, k)
+            detail = (f'lolos QC {good} pcs'
+                      + (f' + hasil permak {fixed} pcs' if fixed else '')
+                      + f' − sudah dikirim {already} pcs')
             raise HTTPException(
                 400,
-                f'Qty dispatch untuk item {label_by_key.get(k, k)} ({req_qty}) melebihi qty '
-                f'terima dari CMT ({actual} pcs) minus yg sudah didispatch ({already}). '
-                f'Maksimal kirim: {max_avail} pcs.'
+                f'Qty kirim untuk {label} ({req_qty} pcs) melebihi sisa yang boleh '
+                f'dikirim. Perhitungan: {detail} = sisa {max_avail} pcs. '
+                f'Ubah qty menjadi maksimal {max_avail} pcs.'
             )
 
     return {
         'source_receipt_ids': list(source_receipt_ids),
         'receipts': receipts,
         'receipt_lines': receipt_lines,
+        'capacity': cap_rows,
     }
 
 
@@ -458,6 +443,83 @@ async def _issue_fg_for_dispatch(db, shipment: dict, items: list, user: dict) ->
 
 
 # ─── BUYER SHIPMENTS ─────────────────────────────────────────────────────────
+@router.get("/buyer-dispatch-capacity")
+async def buyer_dispatch_capacity(request: Request):
+    """FASE E — kapasitas kirim per item, memakai SSOT `core.dispatch_capacity`.
+
+    Dipakai form "Buat Buyer Shipment" supaya angka di layar SAMA PERSIS dengan
+    pagar yang menolak saat Simpan. Sebelum ini layar menghitung sendiri dan
+    salah dua kali (memotong reject dua kali + tidak mengurangi yang sudah
+    dikirim), sehingga pemakai selalu diarahkan ke angka yang pasti ditolak.
+
+    Query (pilih salah satu):
+      receipt_ids=<id,id,...>   → sesuai CMT Receipt yang dicentang di form
+      po_item_ids=<id,id,...>   → langsung per item PO
+    """
+    user = await require_auth(request)
+    deny_klien(user)
+    db = get_db()
+    sp = request.query_params
+    from core import dispatch_capacity as dcap
+
+    def _split(name):
+        raw = sp.get(name) or ''
+        return [x.strip() for x in raw.split(',') if x.strip()]
+
+    receipt_ids = _split('receipt_ids')
+    po_item_ids = _split('po_item_ids')
+    want_stock = (sp.get('with_fg_stock') or '').lower() in ('1', 'true', 'yes')
+    if receipt_ids:
+        rows = await dcap.by_receipts(db, receipt_ids, with_fg_stock=want_stock)
+    elif po_item_ids:
+        rows = await dcap.by_po_items(db, po_item_ids, with_fg_stock=want_stock)
+    else:
+        raise HTTPException(400, 'receipt_ids[] atau po_item_ids[] wajib diisi')
+    return {
+        'items': rows,
+        'totals': {
+            'good_from_cmt': sum(r['good_from_cmt'] for r in rows),
+            'reworked_ok': sum(r['reworked_ok'] for r in rows),
+            'dispatched': sum(r['dispatched'] for r in rows),
+            'shippable': sum(r['shippable'] for r in rows),
+        },
+        'formula': 'sisa bisa kirim = lolos QC + hasil permak − sudah dikirim',
+    }
+
+
+@router.get("/buyer-dispatch-outstanding")
+async def buyer_dispatch_outstanding(request: Request):
+    """FASE E — DAFTAR KEKURANGAN KIRIM (dispatch list).
+
+    Semua item yang barangnya SUDAH diterima dari CMT tetapi belum habis dikirim
+    ke buyer, beserta stok FG yang benar-benar tersedia. Tujuannya menghilangkan
+    kerja menebak: pemakai bisa langsung melihat "sisa 20 pcs, stok ada 20" lalu
+    membuat dispatch susulan tanpa membuka-buka PO satu per satu.
+    """
+    user = await require_auth(request)
+    deny_klien(user)
+    db = get_db()
+    sp = request.query_params
+    from core import dispatch_capacity as dcap
+    rows = await dcap.outstanding(
+        db,
+        buyer=(sp.get('buyer') or '').strip(),
+        po_id=(sp.get('po_id') or '').strip(),
+        include_settled=(sp.get('include_settled') or '').lower() in ('1', 'true', 'yes'),
+    )
+    buyers = sorted({(r.get('buyer') or '').strip() for r in rows if (r.get('buyer') or '').strip()})
+    return {
+        'items': rows,
+        'buyers': buyers,
+        'totals': {
+            'ordered': sum(r['ordered'] for r in rows),
+            'dispatched': sum(r['dispatched'] for r in rows),
+            'shippable': sum(r['shippable'] for r in rows),
+            'items': len(rows),
+        },
+    }
+
+
 @router.get("/buyer-shipments")
 async def get_buyer_shipments(request: Request):
     user = await require_auth(request)
@@ -727,59 +789,20 @@ async def create_buyer_shipment(request: Request):
     po_ids = po_res['po_ids']
     # ──────────────────────────────────────────────────────────────────────
 
-    job_id = body.get('job_id')
-    master_shipment = None
-    if job_id:
-        master_shipment = await db.buyer_shipments.find_one({'job_id': job_id, 'vendor_id': vendor_id})
-    is_new = not master_shipment
-    if is_new:
-        shipment_id = new_id()
-        # Phase D: auto-generate a CONFIGURABLE document number (unless the client
-        # sent an explicit one). Falls back to the legacy prefix on any error.
-        _doc_type = 'buyer_shipment_da' if receiver_type == RECEIVER_DA else 'buyer_shipment_buyer'
-        shipment_number = (body.get('shipment_number') or '').strip()
-        if not shipment_number:
-            try:
-                from utils.doc_numbering import gen_document_number
-                shipment_number = await gen_document_number(
-                    db, _doc_type,
-                    context={'po_number': (po or {}).get('po_number', ''),
-                             'buyer': po_res['customer_name']})
-            except Exception:
-                import logging as _lg
-                _lg.getLogger(__name__).exception('Phase D: gen_document_number gagal; fallback prefix legacy')
-                _prefix = 'SJ-CMT-DA' if receiver_type == RECEIVER_DA else 'SJ-BYR'
-                shipment_number = f"{_prefix}-{(po or {}).get('po_number', '') or int(now_wib().timestamp())}"
-        master_shipment = {
-            'id': shipment_id,
-            'shipment_number': shipment_number,
-            'vendor_id': vendor_id, 'vendor_name': (vendor_doc or {}).get('garment_name', user['name']),
-            'po_id': po_res['primary_po_id'], 'po_number': (po or {}).get('po_number', body.get('po_number', '')),
-            'po_ids': po_ids,   # Phase D: all POs represented (consolidated SJ)
-            'customer_name': po_res['customer_name'] or (po or {}).get('customer_name', body.get('customer_name', '')),
-            'job_id': job_id, 'ship_status': 'Pending',
-            'business_type': po_res['business_type'],
-            # ─── PHASE B fields ────────────────────────────────────────────
-            'receiver_type': receiver_type,
-            'source_receipt_ids': source_receipt_ids,
-            'related_cmt_receipt_id': None,   # filled below if receiver_type='da'
-            'created_by_da': (receiver_type == RECEIVER_BUYER),
-            'consolidated': len(po_ids) > 1,  # Phase D flag
-            # ────────────────────────────────────────────────────────────────
-            'notes': body.get('notes', ''),
-            'created_by': user['name'], 'created_at': now(), 'updated_at': now(),
-            # keputusan 3a — jejak "diinput staf DA" pada deklarasi kirim CMT→DA
-            **ov_stamp(_ov),
-        }
-        await db.buyer_shipments.insert_one(master_shipment)
-    else:
-        shipment_id = master_shipment['id']
-    existing_items = await db.buyer_shipment_items.find({'shipment_id': shipment_id}).to_list(None)
-    max_dispatch = max((i.get('dispatch_seq', 1) for i in existing_items), default=0)
-    dispatch_seq = max_dispatch + 1
-    dispatch_date = parse_date(body.get('shipment_date')) or now()
-    items_data = body.get('items', [])
-
+    # ═══════════════════════════════════════════════════════════════════════
+    # FASE E (2026-08-15) — SEMUA PAGAR DIJALANKAN **SEBELUM** DOKUMEN DITULIS
+    # ═══════════════════════════════════════════════════════════════════════
+    # BUG NYATA yang ditutup di sini (terlihat di layar pemilik): blok validasi
+    # ini DULU berjalan SESUDAH `db.buyer_shipments.insert_one(master_shipment)`.
+    # Akibatnya setiap percobaan simpan yang DITOLAK (mis. "qty melebihi sisa")
+    # tetap meninggalkan SURAT JALAN YATIM: header ada, item 0, progres 0/0 pcs,
+    # status Pending. Nomor surat jalan pun ikut terpakai (counter naik).
+    # Itulah sebabnya daftar pengiriman berisi baris "0 / 0 pcs" yang tidak bisa
+    # dijelaskan siapa pun — dan pemakai menyangka pengirimannya "sudah pernah
+    # dilakukan". Sekarang: gagal validasi ⇒ TIDAK ADA dokumen tertulis.
+    #
+    # Pagar ini hanya butuh `items_data`, `source_receipt_ids`, dan `receiver_type`
+    # — tidak satu pun butuh `shipment_id` — jadi memindahkannya ke atas aman.
     # ─── VALIDATION GUARDRAILS (Phase A — C-1 & M-1) ──────────────────────
     # Reject 0-qty dispatches (M-1): require at least one item with qty_shipped > 0
     total_qty_in_request = sum(int(i.get('qty_shipped', 0) or 0) for i in items_data)
@@ -857,6 +880,59 @@ async def create_buyer_shipment(request: Request):
         for item in items_data:
             if int(item.get('qty_shipped', 0) or 0) < 0:
                 raise HTTPException(400, 'qty_shipped tidak boleh negatif')
+
+
+    job_id = body.get('job_id')
+    master_shipment = None
+    if job_id:
+        master_shipment = await db.buyer_shipments.find_one({'job_id': job_id, 'vendor_id': vendor_id})
+    is_new = not master_shipment
+    if is_new:
+        shipment_id = new_id()
+        # Phase D: auto-generate a CONFIGURABLE document number (unless the client
+        # sent an explicit one). Falls back to the legacy prefix on any error.
+        _doc_type = 'buyer_shipment_da' if receiver_type == RECEIVER_DA else 'buyer_shipment_buyer'
+        shipment_number = (body.get('shipment_number') or '').strip()
+        if not shipment_number:
+            try:
+                from utils.doc_numbering import gen_document_number
+                shipment_number = await gen_document_number(
+                    db, _doc_type,
+                    context={'po_number': (po or {}).get('po_number', ''),
+                             'buyer': po_res['customer_name']})
+            except Exception:
+                import logging as _lg
+                _lg.getLogger(__name__).exception('Phase D: gen_document_number gagal; fallback prefix legacy')
+                _prefix = 'SJ-CMT-DA' if receiver_type == RECEIVER_DA else 'SJ-BYR'
+                shipment_number = f"{_prefix}-{(po or {}).get('po_number', '') or int(now_wib().timestamp())}"
+        master_shipment = {
+            'id': shipment_id,
+            'shipment_number': shipment_number,
+            'vendor_id': vendor_id, 'vendor_name': (vendor_doc or {}).get('garment_name', user['name']),
+            'po_id': po_res['primary_po_id'], 'po_number': (po or {}).get('po_number', body.get('po_number', '')),
+            'po_ids': po_ids,   # Phase D: all POs represented (consolidated SJ)
+            'customer_name': po_res['customer_name'] or (po or {}).get('customer_name', body.get('customer_name', '')),
+            'job_id': job_id, 'ship_status': 'Pending',
+            'business_type': po_res['business_type'],
+            # ─── PHASE B fields ────────────────────────────────────────────
+            'receiver_type': receiver_type,
+            'source_receipt_ids': source_receipt_ids,
+            'related_cmt_receipt_id': None,   # filled below if receiver_type='da'
+            'created_by_da': (receiver_type == RECEIVER_BUYER),
+            'consolidated': len(po_ids) > 1,  # Phase D flag
+            # ────────────────────────────────────────────────────────────────
+            'notes': body.get('notes', ''),
+            'created_by': user['name'], 'created_at': now(), 'updated_at': now(),
+            # keputusan 3a — jejak "diinput staf DA" pada deklarasi kirim CMT→DA
+            **ov_stamp(_ov),
+        }
+        await db.buyer_shipments.insert_one(master_shipment)
+    else:
+        shipment_id = master_shipment['id']
+    existing_items = await db.buyer_shipment_items.find({'shipment_id': shipment_id}).to_list(None)
+    max_dispatch = max((i.get('dispatch_seq', 1) for i in existing_items), default=0)
+    dispatch_seq = max_dispatch + 1
+    dispatch_date = parse_date(body.get('shipment_date')) or now()
 
     inserted_items = []
     for item in items_data:

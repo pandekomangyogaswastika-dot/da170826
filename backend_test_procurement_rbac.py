@@ -16,7 +16,7 @@ import sys
 import requests
 from datetime import datetime
 
-BASE_URL = "https://procurement-portal-36.preview.emergentagent.com"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
 
 # Test credentials
 CREDENTIALS = {

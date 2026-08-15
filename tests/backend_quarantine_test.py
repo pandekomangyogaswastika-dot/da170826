@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timezone
 
 # Configuration - MUST use public endpoint
-BASE_URL = "https://rnd-cockpit-hub.preview.emergentagent.com/api"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com/api"
 
 # Test credentials from /app/memory/test_credentials.md
 CREDENTIALS = {

@@ -16,7 +16,7 @@ import time
 from datetime import datetime, timezone
 
 # Configuration from frontend/.env
-BASE_URL = "https://rnd-cockpit-hub.preview.emergentagent.com/api"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com/api"
 ADMIN_EMAIL = "admin@garment.com"
 ADMIN_PASSWORD = "Admin@123"
 

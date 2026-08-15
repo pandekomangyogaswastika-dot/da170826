@@ -11,7 +11,7 @@ Tests for:
 import requests
 import sys
 
-API = "https://rnd-cockpit-hub.preview.emergentagent.com"
+API = "https://marketing-dash-fix.preview.emergentagent.com"
 
 class P0GapFixTester:
     def __init__(self):

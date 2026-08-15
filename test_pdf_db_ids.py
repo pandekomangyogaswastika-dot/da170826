@@ -12,7 +12,7 @@ from PyPDF2 import PdfReader
 client = MongoClient("mongodb://localhost:27017")
 db = client["test_database"]
 
-BASE_URL = "https://rnd-cockpit-hub.preview.emergentagent.com/api"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com/api"
 LOGIN_EMAIL = "admin@garment.com"
 LOGIN_PASSWORD = "Admin@123"
 

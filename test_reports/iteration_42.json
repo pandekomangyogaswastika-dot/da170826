@@ -199,7 +199,7 @@
   },
   
   "environment": {
-    "frontend_url": "https://weekly-recap-dev.preview.emergentagent.com",
+    "frontend_url": "https://marketing-dash-fix.preview.emergentagent.com",
     "test_credentials": "admin@garment.com / Admin@123 (rate-limited 10/60s)",
     "modules_tested": [
       "cmt-override-portal (Weekly Recap) - PARTIAL SUCCESS",

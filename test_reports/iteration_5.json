@@ -129,7 +129,7 @@
   },
   
   "test_environment": {
-    "backend_url": "https://rnd-cockpit-hub.preview.emergentagent.com",
+    "backend_url": "https://marketing-dash-fix.preview.emergentagent.com",
     "frontend_type": "Static build (pre-deployed)",
     "database": "MongoDB with 1,031 materials (143 kain, 335 aksesoris, 553 FG)",
     "test_credentials": "admin@garment.com / Admin@123"

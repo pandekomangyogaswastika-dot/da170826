@@ -8,7 +8,7 @@ import sys
 from datetime import date, timedelta
 
 # Public endpoint from frontend/.env
-BASE_URL = "https://weekly-recap-dev.preview.emergentagent.com/api"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com/api"
 
 # Test credentials from review_request
 ADMIN_EMAIL = "admin@garment.com"

@@ -3,7 +3,7 @@
 > Dihasilkan `scripts/gate.sh`. JANGAN edit manual.
 > "Selesai" hanya sah bila receipt HIJAU untuk cakupan yang TIDAK di-skip.
 
-- **Waktu:** 2026-08-15 03:33:59  ·  **Durasi:** 70s  ·  **Mode:** cepat
+- **Waktu:** 2026-08-15 19:07:52  ·  **Durasi:** 73s  ·  **Mode:** cepat
 - **Backend:** RUNNING · **Auth:** READY
 
 | Gate | Hasil |
@@ -34,6 +34,9 @@
 | BISA DIPAKAI — Marketing: layar daftar (tabel · cari · unduh) + field tak disembunyikan (INV-F10) | PASS |
 | DATA/UANG — Marketing: pratinjau impor per baris = kenyataan (INV-F11) | PASS |
 | DATA/UANG — Marketing: berkas ekspor tidak boleh masuk toko yang salah (INV-F12) | PASS |
+| UANG/STOK — Dispatch ke buyer: satu rumus sisa kirim + hasil permak bisa dikirim (INV-F16) | PASS |
+| DOKUMEN — PDF rapi: 0 tumpang tindih + tabel penuh lebar halaman (INV-F17) | PASS |
+| STOK/UANG — Kirim material ke CMT menerbitkan MI + memotong stok + jurnal (INV-F18) | PASS |
 | FITUR MATI — handler tergabung / kode setelah return | PASS |
 | FITUR MATI — panggilan FE ke endpoint yang tak ada | PASS |
 | NAVIGASI — menu hantu / duplikat / kedalaman | PASS |

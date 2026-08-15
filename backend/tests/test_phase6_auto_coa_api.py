@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 class Phase6AutoCoaAPITester:
-    def __init__(self, base_url="https://rnd-cockpit-hub.preview.emergentagent.com"):
+    def __init__(self, base_url="https://marketing-dash-fix.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0

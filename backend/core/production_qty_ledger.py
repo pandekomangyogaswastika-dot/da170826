@@ -413,6 +413,41 @@ async def apply_rework_outcome(db, permak: dict, *, qty_fixed: int, qty_scrap: i
                 {"id": job_item["id"]}, {"$inc": inc, "$set": {"updated_at": _now()}})
         fresh = await db.production_job_items.find_one({"id": job_item["id"]}, {"_id": 0})
         out["ledger"] = ledger_view(fresh or {})
+
+    # ── FASE E (2026-08-15) — HASIL PERMAK MEMBUKA KAPASITAS KIRIM KE BUYER ──
+    # CACAT NYATA yang ditutup di sini (keluhan pemilik: "test-po-2 seharusnya
+    # 100, 10 reject sudah diperbaiki, tapi yang tertulis tetap 90"):
+    # fungsi ini dulu hanya menaikkan stok FG + buku kuantitas job. Pagar kirim
+    # ke buyer justru membaca `cmt_receipt_lines.qty_actual`, jadi 10 pcs yang
+    # sudah jadi bagus TIDAK PERNAH boleh dikirim — selamanya.
+    #
+    # Kenapa memakai field BARU (`qty_reworked_ok`) dan bukan menaikkan
+    # `qty_actual` / menurunkan `reject_qty`: angka itu adalah HASIL INSPEKSI
+    # saat barang datang. Mengubahnya retroaktif akan membuat laporan variance,
+    # AP vendor (dibayar per qty lolos), dan gate INV-14 (buku kuantitas vs
+    # dokumen sumber) berubah diam-diam. Menambah field terpisah membuat
+    # kapasitas kirim ikut naik TANPA memalsukan riwayat.
+    #
+    # `retur_ke_cmt` SENGAJA dikecualikan: barangnya dikerjakan ulang vendor dan
+    # masuk lagi lewat PENERIMAAN CMT baru (qty_actual naik sendiri di sana).
+    # Menambahkannya di sini akan menghitung dua kali.
+    if not is_return_to_cmt and permak.get("source_receipt_line_id"):
+        line_inc = {}
+        if qty_fixed:
+            line_inc["qty_reworked_ok"] = qty_fixed
+        if qty_scrap:
+            line_inc["qty_reject_scrapped"] = qty_scrap
+        if line_inc:
+            try:
+                await db.cmt_receipt_lines.update_one(
+                    {"id": permak["source_receipt_line_id"]},
+                    {"$inc": line_inc, "$set": {"updated_at": _now()}})
+                out["dispatch_capacity"] = {
+                    "receipt_line_id": permak["source_receipt_line_id"], **line_inc}
+            except Exception as e:  # noqa: BLE001
+                logger.exception("gagal menambah kapasitas kirim dari permak %s",
+                                 permak.get("permak_number"))
+                out["error_dispatch_capacity"] = str(e)
     return out
 
 

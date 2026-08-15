@@ -13,7 +13,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-URL = "https://da-repo-continue.preview.emergentagent.com"
+URL = "https://marketing-dash-fix.preview.emergentagent.com"
 OUT = Path("/app/.logs/shots")
 OUT.mkdir(parents=True, exist_ok=True)
 errs, console_errs = [], []

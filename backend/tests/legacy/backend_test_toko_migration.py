@@ -12,7 +12,7 @@ Test Coverage:
 - Migration script idempotency
 - OpenAPI deprecation markers
 
-Public endpoint: https://rnd-cockpit-hub.preview.emergentagent.com
+Public endpoint: https://marketing-dash-fix.preview.emergentagent.com
 Admin credentials: admin@garment.com / Admin@123
 """
 
@@ -25,7 +25,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import asyncio
 import os
 
-BASE_URL = "https://rnd-cockpit-hub.preview.emergentagent.com"
+BASE_URL = "https://marketing-dash-fix.preview.emergentagent.com"
 ADMIN_EMAIL = "admin@garment.com"
 ADMIN_PASSWORD = "Admin@123"
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")

@@ -110,8 +110,8 @@
   ],
   
   "environment": {
-    "frontend_url": "https://weekly-recap-dev.preview.emergentagent.com",
-    "backend_url": "https://weekly-recap-dev.preview.emergentagent.com/api",
+    "frontend_url": "https://marketing-dash-fix.preview.emergentagent.com",
+    "backend_url": "https://marketing-dash-fix.preview.emergentagent.com/api",
     "test_credentials": "admin@garment.com / Admin@123",
     "modules_tested": [
       "cmt-override-portal (hash: cmt-override-portal)",

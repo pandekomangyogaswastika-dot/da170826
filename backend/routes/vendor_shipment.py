@@ -19,8 +19,99 @@ from core.pagination import LEGACY_DEFAULT_CAP, _paginate_params, _paginated_env
 from core.enrichment import enrich_with_product_photos
 from core.cmt_override import (apply_scope, effective_vendor_id, resolve_override,
                                stamp as ov_stamp)
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["vendor-shipments"])
+
+
+@router.post("/vendor-shipments/material-preview")
+async def vendor_shipment_material_preview(request: Request):
+    """FASE H-1 — PRATINJAU material yang akan KELUAR dari gudang.
+
+    Dipanggil form "Kirim Material CMT" SEBELUM Simpan supaya pemakai melihat
+    kain & aksesoris apa yang akan berkurang beserta kecukupan stoknya. Tanpa ini,
+    satu-satunya cara mengetahui stok kurang adalah menekan Simpan dan ditolak —
+    UX yang persis dikeluhkan pemilik pada layar dispatch ke buyer.
+
+    Body: {po_id?, items: [{po_item_id, qty_sent}]}
+    """
+    user = await require_auth(request)
+    deny_klien(user)
+    db = get_db()
+    body = await request.json()
+    items = body.get('items') or []
+    lines = [{'po_item_id': it.get('po_item_id'), 'qty': it.get('qty_sent')}
+             for it in items if it.get('po_item_id')]
+    if not lines:
+        return {'applicable': False, 'reason': 'items[] kosong', 'materials': []}
+
+    # Maklon: material milik KLIEN — gudang DA tidak dipotong, jadi tidak ada
+    # yang perlu dipratinjau. Jawaban ini disampaikan JELAS, bukan daftar kosong.
+    bt = 'internal'
+    poi_ids = [ln['po_item_id'] for ln in lines]
+    poi = await db.po_items.find_one({'id': {'$in': poi_ids}}, {'_id': 0, 'po_id': 1})
+    if poi and poi.get('po_id'):
+        po_doc = await db.production_pos.find_one(
+            {'id': poi['po_id']}, {'_id': 0, 'business_type': 1})
+        bt = (po_doc or {}).get('business_type', 'internal')
+    if bt == 'maklon':
+        return {
+            'applicable': False,
+            'business_type': 'maklon',
+            'reason': ('Produksi MAKLON: material milik klien dan dikirim oleh klien, '
+                       'jadi stok gudang DA tidak dipotong.'),
+            'materials': [], 'has_shortage': False,
+        }
+
+    from core import material_issue_engine as mie
+    try:
+        need, notes, total_pcs = await mie.bom_need_for_lines(db, lines)
+    except Exception as e:  # noqa: BLE001
+        logger.exception('pratinjau material gagal')
+        return {'applicable': False, 'reason': f'gagal membaca BOM: {e}', 'materials': []}
+
+    rows, has_short = [], False
+    for code, e in need.items():
+        mat = await db.rahaza_materials.find_one(
+            {'code': code, 'active': True},
+            {'_id': 0, 'id': 1, 'code': 1, 'name': 1, 'unit': 1, 'unit_cost': 1})
+        if not mat:
+            rows.append({'code': code, 'name': e['name'], 'unit': e['unit'],
+                         'qty_required': round(e['qty'], 4), 'available': 0,
+                         'shortage': True,
+                         'problem': 'belum terdaftar di Master Item gudang'})
+            has_short = True
+            continue
+        loc, avail = await mie.best_location_for(db, mat['id'], e['qty'])
+        short = (not loc) or (avail + 1e-9 < e['qty'])
+        if short:
+            has_short = True
+        rows.append({
+            'material_id': mat['id'], 'code': mat['code'],
+            'name': mat.get('name') or code,
+            'unit': mat.get('unit') or e['unit'],
+            'qty_required': round(e['qty'], 4),
+            'available': round(avail, 4),
+            'location_id': loc,
+            'unit_cost': float(mat.get('unit_cost') or 0),
+            'value': round(e['qty'] * float(mat.get('unit_cost') or 0), 2),
+            'shortage': short,
+            'problem': ('belum punya baris stok di gudang' if not loc
+                        else ('stok kurang' if short else '')),
+        })
+    rows.sort(key=lambda r: (not r['shortage'], r['code']))
+    return {
+        'applicable': True,
+        'business_type': bt,
+        'total_pcs': total_pcs,
+        'materials': rows,
+        'has_shortage': has_short,
+        'bom_notes': notes,
+        'total_value': round(sum(r.get('value') or 0 for r in rows), 2),
+    }
+
 
 # ─── VENDOR SHIPMENTS ────────────────────────────────────────────────────────
 @router.get("/vendor-shipments")
@@ -272,9 +363,82 @@ async def create_vendor_shipment(request: Request):
         po = await db.production_pos.find_one({'id': pid})
         if po and po.get('status') == 'Draft':
             await db.production_pos.update_one({'id': pid}, {'$set': {'status': 'Distributed', 'updated_at': now()}})
+
+    # ═════════════════════════════════════════════════════════════════════════
+    # FASE H-1 (2026-08-15) — MENGIRIM MATERIAL KE CMT MENGURANGI STOK GUDANG
+    # ═════════════════════════════════════════════════════════════════════════
+    # CACAT NYATA yang ditutup di sini (keluhan pemilik: "kirim material ke cmt —
+    # bahan dikirimkan dan berkurang, tidak perlu ada ketik ketik lagi"):
+    # endpoint ini DULU hanya menulis `vendor_shipments` + `vendor_shipment_items`,
+    # dan baris itemnya adalah PO ITEM GARMEN (`sku`/`size`/`qty_sent`) — bukan
+    # material. Tidak ada mutasi stok, tidak ada dokumen pengeluaran, tidak ada
+    # jurnal. Akibatnya kain & aksesoris keluar gudang TANPA JEJAK dan stok gudang
+    # tidak pernah turun; nilai persediaan menggelembung tanpa ada yang tahu.
+    #
+    # Sekarang: kebutuhan material dihitung dari BOM aktif (model × ukuran × qty
+    # dikirim, satuan dikonversi lewat SSOT `core.bom_uom`), Material Issue
+    # DITERBITKAN OTOMATIS, stok dipotong lewat mesin yang SAMA dengan approve MI
+    # (`core.material_issue_engine`), dan jurnal ikut terposting.
+    #
+    # KEPUTUSAN PEMILIK: stok kurang ⇒ pengiriman DITOLAK dengan angka yang jelas,
+    # BUKAN diteruskan menjadi stok minus. Karena itu bila penerbitan MI gagal,
+    # surat jalan yang baru dibuat DIBATALKAN kembali (tidak meninggalkan dokumen
+    # setengah jadi — pelajaran surat jalan yatim di Fase E).
+    material_issue = None
+    # HANYA untuk produksi INTERNAL. Pada MAKLON, material adalah milik KLIEN dan
+    # datang lewat kiriman klien — bukan stok gudang DA. Aturan ini bukan tebakan:
+    # `production_internal_adapter.create_mi_draft_from_job()` sudah menolak job
+    # maklon dengan alasan yang sama ("maklon: material dari klien via shipment").
+    # Memotong stok DA untuk maklon justru akan MENGHILANGKAN kain milik DA yang
+    # tidak pernah dikirim.
+    _is_material_out = (
+        shipment_business_type != 'maklon'
+        and body.get('shipment_type', 'NORMAL') in ('NORMAL', 'ADDITIONAL', 'REPLACEMENT')
+        and not is_vendor(user)
+    )
+    if _is_material_out:
+        from core import material_issue_engine as mie
+
+        async def _rollback_shipment():
+            await db.vendor_shipment_items.delete_many({'shipment_id': shipment_id})
+            await db.vendor_shipments.delete_one({'id': shipment_id})
+
+        try:
+            material_issue = await mie.issue_for_vendor_shipment(
+                db, shipment, inserted_items, user)
+        except mie.MaterialShortage as e:
+            await _rollback_shipment()
+            lines = '; '.join(
+                f"{s['material_code']} butuh {s['required']:g} {s.get('unit', '')}"
+                f" tersedia {s['available']:g}" for s in e.shortages)
+            raise HTTPException(
+                400,
+                'Surat jalan TIDAK dibuat: stok material di gudang tidak cukup untuk '
+                f'kiriman ini. {lines}. Tambah stok (penerimaan/opname) atau kurangi '
+                'qty kirim, lalu coba lagi.')
+        except mie.BomMissing as e:
+            await _rollback_shipment()
+            raise HTTPException(400, f'Surat jalan TIDAK dibuat: {e}')
+        except Exception as e:  # noqa: BLE001
+            await _rollback_shipment()
+            logger.exception('penerbitan Material Issue otomatis gagal (SJ %s)',
+                             body.get('shipment_number'))
+            raise HTTPException(
+                500,
+                'Surat jalan TIDAK dibuat: gagal menerbitkan dokumen pengeluaran '
+                f'material ({e}). Tidak ada stok yang dipotong.')
+
     await log_activity(user['id'], user['name'], 'Create', 'Vendor Shipment', f"Created shipment {body.get('shipment_number')}")
     result = serialize_doc(shipment)
     result['items'] = serialize_doc(inserted_items)
+    if material_issue:
+        result['material_issue'] = {
+            'mi_number': (material_issue.get('mi') or {}).get('mi_number')
+                         or material_issue.get('mi_number'),
+            'material_lines': material_issue.get('material_lines'),
+            'bom_notes': material_issue.get('bom_notes') or [],
+            'already_existed': material_issue.get('already', False),
+        }
     return JSONResponse(result, status_code=201)
 
 @router.put("/vendor-shipments/{sid}")

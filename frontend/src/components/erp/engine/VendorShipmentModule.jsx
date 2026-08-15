@@ -80,6 +80,9 @@ function ShipmentList({ userRole, hasPerm = () => false, businessType = null }) 
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [selectedPO, setSelectedPO] = useState(null);
   const [poAccessories, setPoAccessories] = useState([]);
+  // FASE H-1: pratinjau material yang akan keluar dari gudang (BOM × qty kirim)
+  const [matPreview, setMatPreview] = useState(null);
+  const [matLoading, setMatLoading] = useState(false);
   const [form, setForm] = useState({
     shipment_number: '', delivery_note_number: '', vendor_id: '',
     shipment_date: new Date().toISOString().split('T')[0], notes: '', items: []
@@ -190,6 +193,40 @@ function ShipmentList({ userRole, hasPerm = () => false, businessType = null }) 
 
   const removeItem = (idx) => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FASE H-1 (2026-08-15) — PRATINJAU MATERIAL YANG KELUAR DARI GUDANG
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Mengirim material ke CMT sekarang MEMOTONG stok gudang (dulu tidak sama sekali
+  // — kain & aksesoris keluar tanpa jejak). Karena itu pemakai HARUS bisa melihat
+  // apa yang akan berkurang SEBELUM menekan Simpan; kalau tidak, satu-satunya cara
+  // mengetahui stok kurang adalah ditolak saat menyimpan — UX yang persis
+  // dikeluhkan pemilik pada layar dispatch ke buyer.
+  const fetchMaterialPreview = async (items) => {
+    const lines = (items || []).filter(i => i.po_item_id && Number(i.qty_sent) > 0);
+    if (lines.length === 0) { setMatPreview(null); return; }
+    setMatLoading(true);
+    try {
+      const res = await apiPost('/vendor-shipments/material-preview', {
+        items: lines.map(i => ({ po_item_id: i.po_item_id, qty_sent: Number(i.qty_sent) })),
+      });
+      setMatPreview(res || null);
+    } catch (e) {
+      setMatPreview({ applicable: false, reason: e.message || 'gagal memuat pratinjau', materials: [] });
+    } finally { setMatLoading(false); }
+  };
+
+  // Tanda tangan isi item — dipakai sebagai dependensi efek supaya pratinjau
+  // dihitung ulang HANYA saat po_item/qty berubah, bukan setiap render.
+  const itemsSignature = (form.items || [])
+    .map(i => `${i.po_item_id}:${i.qty_sent}`).join('|');
+
+  useEffect(() => {
+    if (!showModal) { setMatPreview(null); return; }
+    // debounce 450ms: pemakai masih mengetik qty, jangan panggil server per ketikan
+    const t = setTimeout(() => fetchMaterialPreview(form.items), 450);
+    return () => clearTimeout(t);
+  }, [showModal, itemsSignature]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.items.length) { toast.error('Tambahkan minimal 1 item'); return; }
@@ -205,9 +242,24 @@ function ShipmentList({ userRole, hasPerm = () => false, businessType = null }) 
         return;
       }
     }
+    // FASE H-1: tolak di layar bila stok material kurang — pesannya menyebut
+    // materialnya, bukan "gagal menyimpan".
+    if (matPreview?.applicable && matPreview.has_shortage) {
+      const s = (matPreview.materials || []).find(m => m.shortage);
+      toast.error(
+        `Stok material tidak cukup: ${s?.code} butuh ${Number(s?.qty_required || 0).toLocaleString('id-ID')} ` +
+        `${s?.unit || ''}, tersedia ${Number(s?.available || 0).toLocaleString('id-ID')}. ` +
+        `Surat jalan tidak akan dibuat.`);
+      return;
+    }
     try {
       const data = await apiPost('/vendor-shipments', { ...form, shipment_type: 'NORMAL' });
-      toast.success(`Shipment ${data.shipment_number || ''} berhasil dibuat`);
+      const mi = data.material_issue;
+      toast.success(
+        `Shipment ${data.shipment_number || ''} dibuat`
+        + (mi?.mi_number
+            ? ` · pengeluaran material ${mi.mi_number} (${mi.material_lines} bahan) otomatis terbit & stok berkurang`
+            : ''));
       setShowModal(false);
       fetchAll();
     } catch (err) { toast.error(err.message || 'Gagal membuat shipment'); }
@@ -658,6 +710,78 @@ function ShipmentList({ userRole, hasPerm = () => false, businessType = null }) 
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ── FASE H-1 — MATERIAL YANG AKAN KELUAR DARI GUDANG ────────────
+                Mengirim material ke CMT sekarang memotong stok gudang + menerbitkan
+                dokumen pengeluaran + jurnal. Panel ini menampilkan angkanya SEBELUM
+                Simpan, supaya kekurangan stok tidak baru diketahui saat ditolak. */}
+            {form.items.length > 0 && (
+              <div className="rounded-xl border border-border bg-muted/20 overflow-hidden" data-testid="material-preview-panel">
+                <div className="px-3 py-2 bg-muted/40 border-b border-border/60 flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-foreground">
+                    Material yang akan KELUAR dari gudang
+                  </span>
+                  {matLoading ? (
+                    <span className="text-xs text-blue-700" data-testid="material-preview-loading">Menghitung dari BOM…</span>
+                  ) : matPreview?.applicable ? (
+                    <span className={`text-xs font-semibold ${matPreview.has_shortage ? 'text-red-600' : 'text-emerald-700'}`}
+                      data-testid="material-preview-status">
+                      {matPreview.has_shortage
+                        ? 'Stok tidak cukup — surat jalan akan ditolak'
+                        : `${matPreview.materials.length} bahan · nilai Rp ${Number(matPreview.total_value || 0).toLocaleString('id-ID')}`}
+                    </span>
+                  ) : null}
+                </div>
+                {!matLoading && matPreview && !matPreview.applicable && (
+                  <p className="px-3 py-2.5 text-xs text-muted-foreground" data-testid="material-preview-na">
+                    {matPreview.reason || 'Tidak ada material gudang yang dipotong untuk kiriman ini.'}
+                  </p>
+                )}
+                {!matLoading && matPreview?.applicable && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs" data-testid="material-preview-table">
+                      <thead className="bg-muted/30">
+                        <tr>
+                          <th className="text-left px-3 py-1.5 text-muted-foreground">Kode</th>
+                          <th className="text-left px-3 py-1.5 text-muted-foreground">Material</th>
+                          <th className="text-right px-3 py-1.5 text-muted-foreground">Keluar</th>
+                          <th className="text-right px-3 py-1.5 text-muted-foreground">Stok Tersedia</th>
+                          <th className="text-right px-3 py-1.5 text-muted-foreground">Nilai</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matPreview.materials.map(m => (
+                          <tr key={m.code} className={`border-t border-border/50 ${m.shortage ? 'bg-red-50 dark:bg-red-500/10' : ''}`}
+                            data-testid={`material-preview-row-${m.code}`}>
+                            <td className="px-3 py-1.5 font-mono text-blue-700">{m.code}</td>
+                            <td className="px-3 py-1.5 text-foreground/90">
+                              {m.name}
+                              {m.shortage && m.problem && (
+                                <span className="ml-1 text-red-600 font-medium">({m.problem})</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-semibold text-amber-700">
+                              {Number(m.qty_required).toLocaleString('id-ID')} {m.unit}
+                            </td>
+                            <td className={`px-3 py-1.5 text-right ${m.shortage ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
+                              {Number(m.available).toLocaleString('id-ID')} {m.unit}
+                            </td>
+                            <td className="px-3 py-1.5 text-right text-muted-foreground">
+                              {m.value ? `Rp ${Number(m.value).toLocaleString('id-ID')}` : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(matPreview.bom_notes || []).length > 0 && (
+                      <p className="px-3 py-2 text-xs text-amber-700 border-t border-border/50">
+                        Catatan BOM: {matPreview.bom_notes.join('; ')}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1157,7 +1281,7 @@ function MaterialRequestList({ userRole, requestType }) {
                 </div>
                 {!adminNotes.trim() && (
                   <p className="text-xs text-amber-600 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Tombol "Tolak" akan aktif setelah Anda mengisi catatan admin.
+                    <AlertTriangle className="w-3 h-3" /> Tombol &quot;Tolak&quot; akan aktif setelah Anda mengisi catatan admin.
                   </p>
                 )}
               </div>

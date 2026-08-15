@@ -378,6 +378,44 @@ if [ $AUTH_READY -eq 1 ]; then
   run_gate "DATA/UANG — Marketing: berkas ekspor tidak boleh masuk toko yang salah (INV-F12)" \
            "python3 test_core_f12_sidik_toko.py"
 
+  # ── INV-F16 (2026-08-15, Fase E) — SATU RUMUS KAPASITAS KIRIM KE BUYER ─────
+  # Keluhan pemilik yang dijaga di sini, tiga-tiganya PERNAH NYATA:
+  #   · layar mem-prefill 100 lalu Simpan ditolak "maksimal 50" — karena layar
+  #     dan pagar backend memakai RUMUS BERBEDA;
+  #   · chip penerimaan tertulis "90" tapi tabel jadi "80" — karena layar
+  #     memotong `reject_qty` dari `qty_actual` yang SUDAH netto lolos QC
+  #     (dokumen bukti: `arrived = qty_actual + reject_qty`);
+  #   · reject yang sudah DIPERBAIKI tidak pernah bisa dikirim — karena
+  #     `apply_rework_outcome()` tidak menyentuh `cmt_receipt_lines` sementara
+  #     pagar kirim membacanya. Sudah dibuktikan MERAH lewat sabotase.
+  # Penjaga ini MEMBANGUN skenario 100 = 90 lolos + 10 reject lewat endpoint
+  # asli, jadi ia menguji perilaku, bukan membaca kode.
+  run_gate "UANG/STOK — Dispatch ke buyer: satu rumus sisa kirim + hasil permak bisa dikirim (INV-F16)" \
+           "python3 scripts/verify_fase_e_kapasitas_kirim.py"
+
+  # ── INV-F17 (2026-08-15, Fase F) — DOKUMEN PDF TIDAK TUMPANG TINDIH ────────
+  # Diukur dari PDF SUNGGUHAN (bbox tiap potongan teks), bukan dari membaca kode:
+  # tumpang tindih = 0, tabel mengisi ≥97% lebar konten, tidak ada teks keluar
+  # margin, dan dokumen kumulatif tidak lagi memuat SUBTOTAL per PO.
+  # Sebabnya dulu: baris "SUBTOTAL {po}" ditulis ke kolom selebar 44 pt memakai
+  # `Table()` mentah berisi STRING (tanpa word-wrap) + lebar kolom hardcode 569
+  # pt padahal lebar konten A4 landscape 773,8 pt.
+  run_gate "DOKUMEN — PDF rapi: 0 tumpang tindih + tabel penuh lebar halaman (INV-F17)" \
+           "python3 scripts/verify_fase_f_pdf_rapi.py"
+
+  # ── INV-F18 (2026-08-15, Fase H-1) — KIRIM MATERIAL KE CMT MEMOTONG STOK ───
+  # Keluhan pemilik: "kirim material ke cmt — bahan dikirimkan dan berkurang,
+  # tidak perlu ada ketik ketik lagi". Yang DIUKUR sebelum perbaikan:
+  # `POST /api/vendor-shipments` hanya menulis surat jalan + item GARMEN, NOL
+  # mutasi `rahaza_material_stock`, NOL dokumen pengeluaran, NOL jurnal ⇒ kain &
+  # aksesoris keluar gudang tanpa jejak dan nilai persediaan menggelembung.
+  # Penjaga ini juga menahan DUA arah salah:
+  #   · stok kurang harus MENOLAK surat jalan tanpa meninggalkan dokumen yatim;
+  #   · MAKLON tidak boleh memotong stok DA (materialnya milik klien).
+  # Sudah dibuktikan MERAH lewat sabotase (stok "turun 0").
+  run_gate "STOK/UANG — Kirim material ke CMT menerbitkan MI + memotong stok + jurnal (INV-F18)" \
+           "python3 scripts/verify_fase_h1_kirim_material_potong_stok.py"
+
 else
   for g in "state machine jurnal" "nomor dokumen kembar" "batas nilai AR/AP" \
            "RBAC/IDOR" "input jahat 4xx" "endpoint kritis" \
@@ -394,7 +432,10 @@ else
            "Marketing lingkup toko per pemakai + jejak (INV-F6RBAC)" \
            "Marketing layar daftar bisa dipakai (INV-F10)" \
            "Marketing pratinjau impor per baris (INV-F11)" \
-           "Marketing berkas masuk toko yang salah (INV-F12)"; do
+           "Marketing berkas masuk toko yang salah (INV-F12)" \
+           "Dispatch buyer satu rumus sisa kirim (INV-F16)" \
+           "PDF rapi tanpa tumpang tindih (INV-F17)" \
+           "Kirim material CMT memotong stok (INV-F18)"; do
     skip_gate "$g" "backend/auth belum siap"
   done
 fi
