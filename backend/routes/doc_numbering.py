@@ -12,9 +12,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from auth import require_auth
+from core import doc_number_policy as _policy
+from core.doc_number_policy import MODES, pattern_for
 from database import get_db
 from data.doc_number_registry import (DOC_NUMBER_REGISTRY, REGISTRY_BY_KEY, GROUPS,
                                       target_of)
@@ -22,6 +25,9 @@ from utils.counters import (CONFIG_COLL, invalidate_format_cache, peek_counter,
                             render_format, validate_format)
 
 router = APIRouter(prefix="/api/admin/doc-numbering", tags=["doc-numbering"])
+# Kebijakan nomor dibaca juga oleh FORM dokumen (staf biasa) — karena itu router
+# terpisah tanpa gerbang izin admin. Lihat `get_number_policy`.
+policy_router = APIRouter(prefix="/api/doc-number-policy", tags=["doc-numbering"])
 
 ALLOWED_ROLES = {"superadmin", "owner", "admin"}
 
@@ -39,7 +45,10 @@ async def _require_admin(request: Request) -> dict:
 
 class FormatIn(BaseModel):
     key: str
-    format: str = Field(..., min_length=1, max_length=120)
+    # FASE G (2026-08-16): boleh menyimpan HANYA mode (format dibiarkan apa adanya),
+    # supaya owner bisa memindah Otomatis↔Manual tanpa mengetik ulang formatnya.
+    format: Optional[str] = Field(None, min_length=1, max_length=120)
+    mode: Optional[str] = None
     active: bool = True
 
 
@@ -71,6 +80,13 @@ async def list_formats(request: Request):
             "field": field,
             "format": fmt,
             "is_custom": bool(cfg.get("format")),
+            # FASE G — mode penomoran: 'auto' (dibuat sistem) atau 'manual' (diketik,
+            # tetapi wajib mengikuti pola). Bawaannya per jenis dokumen supaya
+            # menyalakan fitur ini tidak mengubah perilaku yang sudah jalan.
+            "mode": cfg.get("mode") or entry.get("default_mode") or "auto",
+            "mode_default": entry.get("default_mode") or "auto",
+            "mode_is_custom": bool(cfg.get("mode")),
+            "pola": None if error else pattern_for(fmt),
             "active": cfg.get("active", True),
             "contoh": contoh,
             "error": error,
@@ -102,24 +118,51 @@ async def save_format(request: Request, data: FormatIn):
     entry = REGISTRY_BY_KEY.get(data.key)
     if not entry:
         raise HTTPException(404, f"Jenis dokumen '{data.key}' tidak dikenal.")
+    if data.mode is not None and data.mode not in MODES:
+        raise HTTPException(400, f"mode harus salah satu dari {MODES}.")
+
+    db = get_db()
+    cur = await db[CONFIG_COLL].find_one({"key": data.key}, {"_id": 0}) or {}
+    fmt = (data.format or cur.get("format") or entry["default_format"]).strip()
     try:
-        contoh = validate_format(data.format, entry.get("tokens"),
+        contoh = validate_format(fmt, entry.get("tokens"),
                                  require_seq=entry.get("sequenced", True))
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    db = get_db()
     now = datetime.now(timezone.utc).isoformat()
+    changes = {"format": fmt, "active": data.active,
+               "label": entry["label"], "group": entry["group"],
+               "updated_at": now, "updated_by": user.get("email", user.get("id"))}
+    if data.mode is not None:
+        changes["mode"] = data.mode
     await db[CONFIG_COLL].update_one(
         {"key": data.key},
-        {"$set": {"format": data.format.strip(), "active": data.active,
-                  "label": entry["label"], "group": entry["group"],
-                  "updated_at": now, "updated_by": user.get("email", user.get("id"))},
+        {"$set": changes,
          "$setOnInsert": {"id": str(uuid.uuid4()), "key": data.key}},
         upsert=True,
     )
     invalidate_format_cache(data.key)
-    return {"ok": True, "key": data.key, "format": data.format, "contoh": contoh}
+    mode = changes.get("mode") or cur.get("mode") or entry.get("default_mode") or "auto"
+    return {"ok": True, "key": data.key, "format": fmt, "contoh": contoh,
+            "mode": mode, "pola": pattern_for(fmt)}
+
+
+@policy_router.get("")
+async def get_number_policy(request: Request, key: str = Query(..., min_length=3)):
+    """Kebijakan nomor satu jenis dokumen — dibaca oleh FORM dokumen, bukan admin.
+
+    FASE G: form pembuat dokumen harus tahu apakah kolom nomor boleh diketik.
+    Tanpa ini, layar tetap menyuruh mengetik nomor lalu backend menolaknya —
+    pemakai menanggung kebingungan atas setelan yang tidak pernah ia lihat.
+    Sengaja `require_auth` (bukan izin admin): yang membutuhkannya adalah staf
+    pembuat PO/dokumen, bukan pengelola sistem.
+    """
+    await require_auth(request)
+    db = get_db()
+    pol = await _policy.policy(db, key)
+    pol["nomor_berikutnya"] = await _policy.next_preview(db, key)
+    return pol
 
 
 @router.delete("/{key}")

@@ -1413,6 +1413,7 @@ from routes.rahaza_self import router as rahaza_self_router
 from routes.rahaza_ai import router as rahaza_ai_router
 from routes.portal_assistant_routes import router as portal_assistant_router
 from routes.doc_numbering import router as doc_numbering_router
+from routes.doc_numbering import policy_router as doc_number_policy_router  # FASE G
 from routes.production_dashboard import router as production_dashboard_router
 # Phase 22A — Supervisor & PPIC Power Tools
 # FASE 4 (E10 DELETE): rahaza_material_reservation (per-WO), rahaza_lkp → _archive/rahaza_multistage/
@@ -1512,6 +1513,7 @@ app.include_router(rahaza_self_router)
 app.include_router(rahaza_ai_router)
 app.include_router(portal_assistant_router)
 app.include_router(doc_numbering_router)
+app.include_router(doc_number_policy_router)  # FASE G: form dokumen baca mode nomor
 app.include_router(production_dashboard_router)
 # Phase 22A — Supervisor & PPIC Power Tools
 # FASE 4: material_reservation (per-WO) & lkp diarsip (E10 DELETE)

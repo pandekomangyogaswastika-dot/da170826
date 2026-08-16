@@ -13,6 +13,14 @@ Token khusus per jenis ada di kolom `tokens`.
 
 DOC_NUMBER_REGISTRY = [
     # ── GUDANG ────────────────────────────────────────────────────────────────
+    # FASE H-5 (2026-08-16) — entri BARU 'Roll Kain'. Nomor roll dulu WAJIB
+    # DIKETIK (`RollIn.roll_no`), padahal roll adalah barang fisik yang datang
+    # belasan sekaligus: nomor ketikan membuat dua gulungan bisa bernomor sama dan
+    # tidak ada yang bisa membuktikan gulungan mana yang dipotong. Mode `auto`
+    # menjadi bawaan — roll lahir dari penerimaan barang, bukan dari ketikan.
+    {"key": "wh_fabric_rolls.roll_no", "label": "Roll Kain", "group": "Gudang",
+     "default_format": "RL-{YYYY}{MM}-{SEQ:4}", "tokens": [], "default_mode": "auto",
+     "catatan": "Dibuat otomatis saat penerimaan kain (rincian roll per gulungan)."},
     {"key": "wh_delivery_notes.sj_number", "label": "Surat Jalan", "group": "Gudang",
      "default_format": "{TIPE}/{YYYY}/{MM}/{SEQ:4}", "tokens": ["TIPE"],
      "catatan": "TIPE = jenis surat jalan (mis. SJ, SJK)."},
@@ -47,6 +55,23 @@ DOC_NUMBER_REGISTRY = [
      "default_format": "ACC-PR-{SEQ:4}", "tokens": []},
 
     # ── PRODUKSI & MAKLON ─────────────────────────────────────────────────────
+    # FASE G (2026-08-16) — DUA entri di bawah BARU. Nomor PO produksi (sumber
+    # nomor SPP) selama ini 100% diketik tangan: `create_po_internal()` menolak
+    # permintaan tanpa `po_number` dan menyimpan apa pun yang dikirim. Isinya
+    # sekarang bercampur bebas (`PO-INT-DEMO-1`, `PO-MK-DEMO-1`, `PO-MKL-GAB-A`).
+    # `default_mode: manual` menjaga perilaku hari ini APA ADANYA — yang berubah
+    # hanyalah nomor manual wajib mengikuti polanya, dan owner boleh memindah ke
+    # OTOMATIS kapan pun dari layar Penomoran Dokumen.
+    # Satu koleksi+field menampung dua jenis dokumen (internal vs maklon) ⇒ kunci
+    # kedua memakai override `collection`/`field` seperti pola invoice AR.
+    {"key": "production_pos.po_number", "label": "PO Produksi Internal (SPP)", "group": "Produksi",
+     "default_format": "PO-INT-{YYYY}{MM}-{SEQ:4}", "tokens": [], "default_mode": "manual",
+     "catatan": "Dipakai juga sebagai nomor SPP. Mode manual = nomor diketik tetapi "
+                "wajib mengikuti pola ini."},
+    {"key": "production_pos.po_number_maklon", "label": "PO Maklon (Produksi)", "group": "Maklon",
+     "default_format": "PO-MKL-{YYYY}{MM}-{SEQ:4}", "tokens": [], "default_mode": "manual",
+     "collection": "production_pos", "field": "po_number",
+     "catatan": "PO maklon yang tersimpan di koleksi PO produksi (SSOT satu penulis)."},
     {"key": "cutting_orders.number", "label": "Order Cutting", "group": "Produksi",
      "default_format": "CUT-{YYYY}{MM}-{SEQ:4}", "tokens": []},
     {"key": "dewi_cmt_permak.permak_number", "label": "Permak / Perbaikan", "group": "Produksi",

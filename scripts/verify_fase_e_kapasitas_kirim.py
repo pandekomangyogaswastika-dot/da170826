@@ -43,13 +43,13 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
-from gr_common import db_handle  # noqa: E402
+from gr_common import db_handle, test_doc_number  # noqa: E402
 
 API = os.environ.get("API_BASE", "http://localhost:8001")
 G, Y, R, C, B, X = "\033[92m", "\033[93m", "\033[91m", "\033[96m", "\033[1m", "\033[0m"
 
 MARK = "VERIFY-FASE-E"
-PO_NO = "PO-FASE-E-REJECT"
+PO_NO = "PO-MKL-FASE-E-9101"   # diganti saat jalan agar mengikuti pola resmi (FASE G)
 QTY_ORDER = 100
 QTY_GOOD = 90      # lolos QC
 QTY_REJECT = 10    # reject → nanti dipermak
@@ -94,7 +94,12 @@ def login(email, pwd):
 
 
 def clean(db):
-    pos = list(db.production_pos.find({"po_number": PO_NO}, {"_id": 0, "id": 1}))
+    # FASE G (2026-08-16): PO uji tidak lagi bernomor tetap `PO-FASE-E-REJECT` —
+    # nomor manual sekarang wajib mengikuti pola resmi, jadi nomornya ditentukan
+    # saat jalan. Pembersihan berpegang pada penanda MARK di `notes` (yang memang
+    # selalu ditulis skenario ini), bukan pada nomornya.
+    pos = list(db.production_pos.find(
+        {"$or": [{"notes": MARK}, {"po_number": PO_NO}]}, {"_id": 0, "id": 1}))
     ids = [p["id"] for p in pos]
     n = 0
     if ids:
@@ -222,6 +227,10 @@ def main():  # noqa: C901
         print(f"{R}login admin gagal{X}")
         return 2
     ven = login("cmtvendor@dewiaditya.id", "Dewi@123")
+
+    # FASE G — nomor PO uji harus mengikuti pola resmi jenis dokumen PO maklon.
+    global PO_NO
+    PO_NO = test_doc_number("production_pos.po_number_maklon", adm)
 
     print(f"{B}FASE E — kapasitas kirim DA → buyer (skenario 100 = 90 lolos + 10 reject){X}")
     clean(db)

@@ -431,6 +431,30 @@ if [ $AUTH_READY -eq 1 ]; then
   run_gate "PRODUK/STOK — Gudang: tombol buat MI, Buat Barcode, menu mati dilepas (INV-F19)" \
            "python3 scripts/verify_fase_h_gudang.py"
 
+  # ── INV-F20 (2026-08-16, Fase D) — DASHBOARD MARKETING: PINTU + ANGKA RESMI ──
+  # `toko-dashboard` sudah lama jadi modul BAWAAN Portal Marketing tetapi TIDAK
+  # tercantum di satu pun sidebar ⇒ tidak ada jalan pulang ke dashboard selain
+  # memuat ulang portal ("dashboardnya hilang dari menu"). Dan isinya tidak pernah
+  # memuat target/anggaran/ROI — hanya penjumlahan input harian 30 hari terakhir,
+  # rentang yang selalu menyerempet dua bulan sehingga omzet mustahil disandingkan
+  # dengan targetnya. Gate ini menahan tiga arah salah sekaligus: pintu menghilang
+  # lagi, angka resmi dijumlah ulang di browser (layar vs ekspor bisa beda), dan
+  # ROI diklaim sahih padahal HPP belum tertaut (−100% terbaca sebagai kerugian).
+  run_gate "LAYAR/UANG — Dashboard Marketing: ada pintunya + angka resmi dari SSOT siklus (INV-F20)" \
+           "python3 scripts/verify_fase_d_dashboard_marketing.py"
+
+  # ── INV-F21 (2026-08-16, Fase G) — NOMOR DOKUMEN: OTOMATIS vs MANUAL ────────
+  # Pondasi penomoran (47 jenis dokumen, satu generator race-safe, layar format)
+  # sudah lama ada, tetapi MODE-nya cuma implisit: kolom nomor diisi ⇒ dipakai apa
+  # adanya TANPA pemeriksaan. `production_pos` — sumber nomor SPP — bahkan
+  # MEWAJIBKAN nomor diketik tangan, dan arsipnya kini bercampur `PO-INT-DEMO-1`,
+  # `PO-MK-DEMO-1`, `PO-MKL-GAB-A`: tiga pola untuk satu jenis dokumen, tidak bisa
+  # diurutkan maupun dicari. Gate ini menahan empat arah salah: nomor bebas lolos,
+  # nomor ganda, penolakan diam-diam (nomor ketikan diabaikan tanpa pesan), dan
+  # penomoran GANDA pada dokumen cermin PO Maklon.
+  run_gate "DATA — Nomor dokumen: mode Otomatis/Manual ditegakkan, nomor bebas ditolak (INV-F21)" \
+           "python3 scripts/verify_fase_g_penomoran.py"
+
 else
   for g in "state machine jurnal" "nomor dokumen kembar" "batas nilai AR/AP" \
            "RBAC/IDOR" "input jahat 4xx" "endpoint kritis" \
@@ -451,7 +475,9 @@ else
            "Dispatch buyer satu rumus sisa kirim (INV-F16)" \
            "PDF rapi tanpa tumpang tindih (INV-F17)" \
            "Kirim material CMT memotong stok (INV-F18)" \
-           "Gudang: buat MI + Buat Barcode + menu mati (INV-F19)"; do
+           "Gudang: buat MI + Buat Barcode + menu mati (INV-F19)" \
+           "Dashboard Marketing: pintu + angka resmi (INV-F20)" \
+           "Nomor dokumen: mode auto/manual (INV-F21)"; do
     skip_gate "$g" "backend/auth belum siap"
   done
 fi

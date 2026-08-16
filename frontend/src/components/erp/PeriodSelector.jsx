@@ -10,6 +10,13 @@ const getDaysAgo = (days) => {
   d.setDate(d.getDate() - days);
   return d.toISOString().split('T')[0];
 };
+// FASE D (2026-08-16) — "Bulan Ini" ada karena SEMUA target & anggaran marketing
+// bersifat BULANAN. Tanpa preset ini, bawaan 30 hari terakhir selalu menyerempet dua
+// bulan, jadi omzet di layar tidak pernah bisa dibandingkan dengan targetnya.
+const getMonthStart = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
 
 export function PeriodSelector({ value, onChange }) {
   const [isCustom, setIsCustom] = useState(false);
@@ -17,15 +24,16 @@ export function PeriodSelector({ value, onChange }) {
   const [customTo, setCustomTo] = useState(value.date_to || getToday());
 
   const presets = [
+    { label: 'Bulan Ini', month: true },
     { label: 'Hari Ini', days: 0 },
     { label: '7 Hari', days: 7 },
     { label: '30 Hari', days: 30 },
     { label: '90 Hari', days: 90 },
   ];
 
-  const handlePreset = (days) => {
+  const handlePreset = (preset) => {
     const to = getToday();
-    const from = days === 0 ? to : getDaysAgo(days);
+    const from = preset.month ? getMonthStart() : (preset.days === 0 ? to : getDaysAgo(preset.days));
     onChange({ date_from: from, date_to: to });
     setIsCustom(false);
   };
@@ -42,6 +50,7 @@ export function PeriodSelector({ value, onChange }) {
 
   const currentLabel = () => {
     if (!value.date_from || !value.date_to) return 'Pilih Periode';
+    if (value.date_from === getMonthStart() && value.date_to === getToday()) return 'Bulan Ini';
     const from = new Date(value.date_from);
     const to = new Date(value.date_to);
     const diffDays = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
@@ -61,8 +70,8 @@ export function PeriodSelector({ value, onChange }) {
             key={preset.label}
             variant="outline"
             size="sm"
-            onClick={() => handlePreset(preset.days)}
-            data-testid={`period-${preset.days}d`}
+            onClick={() => handlePreset(preset)}
+            data-testid={preset.month ? 'period-month' : `period-${preset.days}d`}
           >
             {preset.label}
           </Button>

@@ -76,6 +76,27 @@ export default function DocNumberingModule({ token }) {
     } catch (e) { toast.error(e.message); } finally { setBusy(''); }
   };
 
+  // FASE G (2026-08-16) — pindah mode OTOMATIS ⇄ MANUAL.
+  // Otomatis: nomor dibuat sistem, kolom nomor di form dokumen dikunci.
+  // Manual: nomor diketik, TETAPI wajib mengikuti pola format di sebelah —
+  // itulah yang menghentikan nomor bebas seperti `PO-MKL-GAB-A` masuk arsip.
+  const setMode = async (item, mode) => {
+    if (mode === item.mode) return;
+    setBusy(item.key);
+    try {
+      const r = await fetch(BASE, {
+        method: 'PUT', headers: h,
+        body: JSON.stringify({ key: item.key, mode, active: true }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+      toast.success(mode === 'auto'
+        ? `${item.label}: nomor dibuat OTOMATIS oleh sistem`
+        : `${item.label}: nomor DIKETIK, wajib mengikuti pola ${d.format}`);
+      await load();
+    } catch (e) { toast.error(e.message); } finally { setBusy(''); }
+  };
+
   const reset = async (item) => {
     setBusy(item.key);
     try {
@@ -177,6 +198,30 @@ export default function DocNumberingModule({ token }) {
                       {item.nomor_terakhir != null && (
                         <p className="text-[11px] text-muted-foreground">Nomor urut terakhir terpakai: <b>{item.nomor_terakhir}</b></p>
                       )}
+                    </div>
+
+                    {/* FASE G — mode penomoran per jenis dokumen */}
+                    <div className="min-w-[190px] space-y-1">
+                      <div className="inline-flex rounded-lg border border-border overflow-hidden">
+                        {[['auto', 'Otomatis'], ['manual', 'Manual']].map(([m, lbl]) => (
+                          <button key={m} onClick={() => setMode(item, m)} disabled={busy === item.key}
+                            data-testid={`docnum-mode-${item.key}-${m}`}
+                            className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                              item.mode === m
+                                ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]'
+                                : 'bg-transparent text-muted-foreground hover:text-foreground'}`}>
+                            {lbl}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground" data-testid={`docnum-mode-hint-${item.key}`}>
+                        {item.mode === 'manual'
+                          ? 'Nomor diketik petugas — yang tidak sesuai pola ditolak.'
+                          : 'Nomor dibuat sistem — kolom nomor di form dikunci.'}
+                        {item.mode_is_custom && item.mode !== item.mode_default && (
+                          <span className="text-primary"> (bawaan: {item.mode_default === 'auto' ? 'otomatis' : 'manual'})</span>
+                        )}
+                      </p>
                     </div>
 
                     <div className="flex items-center gap-2">

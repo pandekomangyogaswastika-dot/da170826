@@ -82,6 +82,9 @@ PAGED_DOORS = {
 
 # Pintu yang BUKAN daftar — dikecualikan dengan alasan yang bisa diperiksa.
 NOT_A_LIST = {
+    "toko-dashboard": "dashboard ringkasan: angka resmi bulanan dari SSOT siklus "
+                      "(target/omzet/anggaran/ROI) + grafik tren; daftar tokonya "
+                      "ada di layar anaknya (Akun Platform → detail toko)",
     "marketing-import": "wizard langkah-demi-langkah (punya layar Riwayat sendiri)",
     "marketing-kol-hub": "hub berisi tab; daftarnya ada di layar anaknya",
     "marketing-live-hub": "hub berisi tab",

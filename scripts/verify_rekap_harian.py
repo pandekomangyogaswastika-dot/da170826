@@ -125,6 +125,10 @@ MARK = "__REKAPTEST__"
 OVH = "X-CMT-Override-Vendor"
 WIB = timezone(timedelta(hours=7))
 
+# FASE G (2026-08-16): nomor PO uji WAJIB mengikuti pola resmi jenis dokumennya.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+from gr_common import test_doc_number  # noqa: E402
+
 G, R, Y, B, X = "\033[92m", "\033[91m", "\033[93m", "\033[94m", "\033[0m"
 PASSES: list[str] = []
 FAILS: list[str] = []
@@ -228,7 +232,7 @@ def main() -> int:
                       "login staf uji gagal"):
             return 1
 
-        po_number = f"{MARK}-PO-{uuid.uuid4().hex[:6].upper()}"
+        po_number = test_doc_number("production_pos.po_number_maklon", admin)
         dl = (datetime.now(timezone.utc) + timedelta(days=7)).date().isoformat()
         c, po = call("post", "/production-pos", admin, body={
             "po_number": po_number, "business_type": "maklon", "vendor_id": vid,

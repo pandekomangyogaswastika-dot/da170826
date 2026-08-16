@@ -231,6 +231,36 @@ def backend_up() -> bool:
     return 0 <= st < 500
 
 
+def test_doc_number(key: str, token=None, band: int = 9000) -> str:
+    """Nomor dokumen UJI yang MENGIKUTI pola resmi jenis dokumen `key`.
+
+    FASE G (2026-08-16): sejak nomor MANUAL wajib mengikuti polanya
+    (`core/doc_number_policy.py`), gate tidak boleh lagi mengarang nomor seperti
+    `__CMTOVTEST__-PO-9F2A1B` — nomor itu ditolak backend, dan gate yang gagal
+    karena aturan yang BENAR hanya mengajari orang untuk mematikan aturannya.
+
+    Nomor uji diambil dari pita 9xxx supaya:
+      (a) tetap sah menurut pola yang sedang disetel owner (diambil dari
+          `/api/doc-number-policy`, jadi ikut berubah bila formatnya diubah),
+      (b) TIDAK menghabiskan nomor urut resmi — mode manual tidak menyentuh
+          counter, sehingga dokumen asli tidak berlubang nomornya,
+      (c) mudah dikenali kalau ada sisa data uji yang lupa dihapus.
+    """
+    import random
+    st, txt = http("GET", f"/doc-number-policy?key={key}", token or login())
+    sample = ""
+    if st == 200:
+        try:
+            sample = (json.loads(txt) or {}).get("contoh") or ""
+        except Exception:  # noqa: BLE001
+            sample = ""
+    m = re.search(r"(\d+)\s*$", sample)
+    if not m:
+        return sample or f"UJI-{int(time.time())}"
+    width = len(m.group(1))
+    return sample[:m.start(1)] + str(band + random.randint(0, 999)).zfill(width)[-width:]
+
+
 # ═══════════════ MODEL TEMUAN + LAPORAN ═══════════════
 @dataclass
 class Finding:

@@ -3,7 +3,7 @@
 > Dihasilkan `scripts/gate.sh`. JANGAN edit manual.
 > "Selesai" hanya sah bila receipt HIJAU untuk cakupan yang TIDAK di-skip.
 
-- **Waktu:** 2026-08-15 20:03:23  ·  **Durasi:** 76s  ·  **Mode:** cepat
+- **Waktu:** 2026-08-16 19:49:43  ·  **Durasi:** 76s  ·  **Mode:** cepat
 - **Backend:** RUNNING · **Auth:** READY
 
 | Gate | Hasil |
@@ -38,6 +38,8 @@
 | DOKUMEN — PDF rapi: 0 tumpang tindih + tabel penuh lebar halaman (INV-F17) | PASS |
 | STOK/UANG — Kirim material ke CMT menerbitkan MI + memotong stok + jurnal (INV-F18) | PASS |
 | PRODUK/STOK — Gudang: tombol buat MI, Buat Barcode, menu mati dilepas (INV-F19) | PASS |
+| LAYAR/UANG — Dashboard Marketing: ada pintunya + angka resmi dari SSOT siklus (INV-F20) | PASS |
+| DATA — Nomor dokumen: mode Otomatis/Manual ditegakkan, nomor bebas ditolak (INV-F21) | PASS |
 | FITUR MATI — handler tergabung / kode setelah return | PASS |
 | FITUR MATI — panggilan FE ke endpoint yang tak ada | PASS |
 | NAVIGASI — menu hantu / duplikat / kedalaman | PASS |

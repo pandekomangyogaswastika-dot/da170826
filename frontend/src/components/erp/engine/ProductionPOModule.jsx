@@ -53,6 +53,19 @@ export default function ProductionPOModule({ userRole, hasPerm = () => false, bu
   // baris item yang salah. Sekarang: banner inline di dalam modal (data-testid
   // `po-form-error`) + fokus otomatis ke baris item bermasalah.
   const [formError, setFormError] = useState(null);   // { text, itemIdx }
+  // FASE G (2026-08-16) — kebijakan nomor dokumen (otomatis/manual) dibaca dari
+  // SSOT penomoran. Tanpa ini layar tetap menyuruh mengetik nomor walau owner
+  // sudah menyetelnya OTOMATIS, dan pemakai menanggung penolakan backend atas
+  // setelan yang tidak pernah ia lihat.
+  const [numPolicy, setNumPolicy] = useState(null);
+
+  useEffect(() => {
+    const key = businessType === 'maklon'
+      ? 'production_pos.po_number_maklon' : 'production_pos.po_number';
+    apiGet(`/doc-number-policy?key=${key}`)
+      .then(setNumPolicy)
+      .catch(() => setNumPolicy(null));   // gagal baca kebijakan ⇒ perlakukan manual
+  }, [businessType]);
   // Fase 3 — Cek seri dobel (live, non-blocking) saat BUAT ORDER. { [idx]: {loading, usages} }
   const [serialChecks, setSerialChecks] = useState({});
   const serialDebounce = useRef({});
@@ -338,6 +351,10 @@ export default function ProductionPOModule({ userRole, hasPerm = () => false, bu
       .map(a => ({ ...a, qty_needed: Number(a.qty_needed) || 0 }));
     const payload = { ...form, items: itemsPayload, po_accessories: accPayload };
     if (businessType) payload.business_type = businessType;
+    // FASE G (2026-08-16) — mode OTOMATIS: nomor JANGAN dikirim. Backend menolak
+    // nomor ketikan saat mode otomatis (dan menyebut nomor yang akan dipakai),
+    // supaya tidak ada nomor yang "lolos" tanpa mengikuti pola.
+    if (!editData && numPolicy?.mode === 'auto') delete payload.po_number;
     try {
       const data = editData
         ? await apiPut(`/production-pos/${editData.id}`, payload)
@@ -711,8 +728,36 @@ export default function ProductionPOModule({ userRole, hasPerm = () => false, bu
             )}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/90 mb-1">Nomor PO * <span className="text-xs text-muted-foreground/70">(manual)</span></label>
-                <input required className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.po_number} onChange={e => setForm({...form, po_number: e.target.value})} placeholder="PO-2025-001" />
+                <label className="block text-sm font-medium text-foreground/90 mb-1">
+                  Nomor PO {numPolicy?.mode === 'auto' && !editData ? '' : '*'}
+                  <span className="text-xs text-muted-foreground/70">
+                    {numPolicy?.mode === 'auto' && !editData ? ' (otomatis)' : ' (manual)'}
+                  </span>
+                </label>
+                {numPolicy?.mode === 'auto' && !editData ? (
+                  <>
+                    <input readOnly disabled data-testid="po-number-auto"
+                      className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono bg-muted/50 text-muted-foreground"
+                      value={numPolicy.nomor_berikutnya || numPolicy.contoh || 'dibuat otomatis'} />
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Dibuat sistem saat disimpan (pola {numPolicy.format}). Ubah ke manual di
+                      Administrasi Sistem → Penomoran Dokumen.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <input required data-testid="po-number-input"
+                      className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={form.po_number} onChange={e => setForm({...form, po_number: e.target.value})}
+                      placeholder={numPolicy?.contoh || 'PO-2025-001'} />
+                    {numPolicy?.format && !editData && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Wajib mengikuti pola <b className="font-mono">{numPolicy.format}</b> —
+                        contoh {numPolicy.contoh}.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground/90 mb-1">{isInternal ? 'Customer / Tujuan FG' : 'Buyer / Customer *'}</label>

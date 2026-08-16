@@ -44,6 +44,9 @@ import requests
 ROOT = Path(__file__).resolve().parent.parent
 BASE = os.environ.get("API_BASE", "http://localhost:8001")
 MARK = "__INVTEST__"
+# FASE G (2026-08-16): nomor PO uji WAJIB mengikuti pola resmi jenis dokumennya.
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+from gr_common import test_doc_number  # noqa: E402
 G, Y, R, C, B, X = "\033[92m", "\033[93m", "\033[91m", "\033[96m", "\033[1m", "\033[0m"
 
 FAILS: list[str] = []
@@ -341,7 +344,8 @@ def main():
         v0 = cat["variants"][0]
         vendor_id = "mk-vendor-demo-1"
         rate = float(cat.get("default_cmt_price") or 10000)
-        po_number = f"INV-PO-{int(time.time())}"
+        # FASE G (2026-08-16): nomor manual wajib mengikuti pola resmi PO maklon.
+        po_number = test_doc_number("production_pos.po_number_maklon", adm)
         st, po = call("POST", "/api/production-pos", adm, json={
             "po_number": po_number, "business_type": "maklon", "buyer_id": client["id"],
             "vendor_id": vendor_id, "status": "Confirmed", "notes": MARK,
@@ -622,7 +626,8 @@ def main():
 
         # ── INV-11: surat jalan buyer GABUNGAN 2 PO → child & rincian per PO ──
         st, po2 = call("POST", "/api/production-pos", adm, json={
-            "po_number": f"{po_number}-B", "business_type": "maklon", "buyer_id": client["id"],
+            "po_number": test_doc_number("production_pos.po_number_maklon", adm),
+            "business_type": "maklon", "buyer_id": client["id"],
             "vendor_id": vendor_id, "status": "Confirmed", "notes": MARK,
             "po_date": date.today().isoformat(), "deadline": date.today().isoformat(),
             "items": [{"catalog_item_id": cat["id"], "maklon_variant_id": v0.get("id"),

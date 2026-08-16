@@ -2441,7 +2441,7 @@
   {
    "file": "frontend/src/components/erp/MarketingDashboard.jsx",
    "name": "MarketingDashboard.jsx",
-   "lines": 334,
+   "lines": 355,
    "cards": 16,
    "grids": 17,
    "tables": 2,
@@ -4330,7 +4330,7 @@
   {
    "file": "frontend/src/components/erp/DocNumberingModule.jsx",
    "name": "DocNumberingModule.jsx",
-   "lines": 239,
+   "lines": 284,
    "cards": 7,
    "grids": 1,
    "tables": 0,
@@ -4344,7 +4344,7 @@
     "toggle": false
    },
    "via": [],
-   "fields_used": 15,
+   "fields_used": 18,
    "apis": [
     "api/admin/doc-numbering"
    ],

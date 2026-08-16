@@ -13,6 +13,7 @@ import { AccountCard } from './AccountCard';
 import { RevenueChart } from './RevenueChart';
 import { HealthScoreGauge } from './HealthScoreGauge';
 import { AccountDetailPage } from './marketing/AccountDetailPage';
+import { MarketingCycleStrip } from './marketing/MarketingCycleStrip';
 import { toast } from 'sonner';
 import { formatRupiah } from '@/lib/format';
 
@@ -32,12 +33,29 @@ export default function MarketingDashboard({ token, onNavigate }) {
   const [overview, setOverview] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [perAccountTrend, setPerAccountTrend] = useState({}); // { accountId: [{date,total,live}] }
-  const [period, setPeriod] = useState({ date_from: '', date_to: '' });
+  // FASE D (2026-08-16) — bawaan periode = BULAN BERJALAN, bukan kosong/30 hari.
+  // Target, anggaran, dan ROI marketing semuanya BULANAN. Dengan bawaan lama
+  // (30 hari terakhir dari backend) rentangnya selalu menyerempet dua bulan,
+  // sehingga omzet di layar tidak pernah bisa disandingkan dengan targetnya —
+  // dan itulah yang terbaca sebagai "angka dashboard tidak nyambung".
+  const [period, setPeriod] = useState(() => {
+    const d = new Date();
+    return {
+      date_from: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`,
+      date_to: d.toISOString().split('T')[0],
+    };
+  });
   const [chartAccountFilter, setChartAccountFilter] = useState('all');
   const [detailAccount, setDetailAccount] = useState(null); // null = dashboard, object = detail view
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }),
     [token]
+  );
+  // Bulan yang dipakai untuk angka RESMI (target/anggaran/ROI) — diambil dari
+  // tanggal akhir rentang supaya layar dan SSOT siklus bicara tentang bulan sama.
+  const cyclePeriod = useMemo(
+    () => (period.date_to || new Date().toISOString().split('T')[0]).slice(0, 7),
+    [period.date_to]
   );
 
   const fetchData = useCallback(async () => {
@@ -134,15 +152,18 @@ export default function MarketingDashboard({ token, onNavigate }) {
       {!detailAccount && (<>
       <PageHeader
         icon={Store}
-        eyebrow="Portal Marketing · Overview"
-        title="Marketing Dashboard"
-        subtitle="Kelola akun multi-platform (Shopee, TikTokShop, Tokopedia), track penjualan harian (regular & live), KOL, dan task management."
+        eyebrow="Portal Marketing · Ringkasan"
+        title="Dashboard Marketing"
+        subtitle="Satu layar untuk target, omzet, anggaran, dan kesehatan tiap toko (Shopee, TikTokShop, Tokopedia) — angka resmi bulanan diambil dari SSOT siklus marketing."
         actions={
           <Button onClick={fetchData} variant="outline" size="sm" data-testid="refresh-dashboard-btn">
-            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Muat Ulang
           </Button>
         }
       />
+
+      {/* Angka RESMI satu bulan — dijumlah backend (SSOT siklus marketing) */}
+      <MarketingCycleStrip token={token} period={cyclePeriod} />
 
       {/* Period Selector */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -151,8 +172,8 @@ export default function MarketingDashboard({ token, onNavigate }) {
           <Button onClick={() => onNavigate?.('marketing-sales')} size="sm" data-testid="quick-input-sales">
             <Plus className="w-3.5 h-3.5 mr-1.5" /> Input Sales
           </Button>
-          <Button onClick={() => onNavigate?.('marketing-tasks')} size="sm" variant="outline" data-testid="quick-tasks">
-            Buka Tasks
+          <Button onClick={() => onNavigate?.('marketing-task-hub')} size="sm" variant="outline" data-testid="quick-tasks">
+            Buka Tugas
           </Button>
         </div>
       </div>
@@ -168,7 +189,7 @@ export default function MarketingDashboard({ token, onNavigate }) {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <GlassPanel className="p-5" data-testid="kpi-total-revenue">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-muted-foreground tracking-wider">Total Revenue</div>
+                  <div className="text-xs uppercase text-muted-foreground tracking-wider">Omzet Rentang Terpilih</div>
                   <TrendingUp className="w-4 h-4 text-primary" />
                 </div>
                 <div className="text-2xl font-bold tabular-nums text-foreground">
@@ -182,7 +203,7 @@ export default function MarketingDashboard({ token, onNavigate }) {
 
               <GlassPanel className="p-5" data-testid="kpi-total-orders">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-muted-foreground tracking-wider">Total Orders</div>
+                  <div className="text-xs uppercase text-muted-foreground tracking-wider">Jumlah Order</div>
                   <Package className="w-4 h-4 text-primary" />
                 </div>
                 <div className="text-2xl font-bold tabular-nums text-foreground">
@@ -195,7 +216,7 @@ export default function MarketingDashboard({ token, onNavigate }) {
 
               <GlassPanel className="p-5" data-testid="kpi-active-accounts">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-muted-foreground tracking-wider">Active Accounts</div>
+                  <div className="text-xs uppercase text-muted-foreground tracking-wider">Toko Aktif</div>
                   <Store className="w-4 h-4 text-primary" />
                 </div>
                 <div className="text-2xl font-bold tabular-nums text-foreground">
@@ -208,7 +229,7 @@ export default function MarketingDashboard({ token, onNavigate }) {
 
               <GlassPanel className="p-5 bg-primary/5 border-primary/30" data-testid="kpi-top-account">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs uppercase text-primary tracking-wider">Top Performer</div>
+                  <div className="text-xs uppercase text-primary tracking-wider">Toko Terbaik</div>
                   <BarChart3 className="w-4 h-4 text-primary" />
                 </div>
                 {overview.top_account ? (
@@ -233,9 +254,9 @@ export default function MarketingDashboard({ token, onNavigate }) {
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <div>
                   <h3 className="text-base font-semibold flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-primary" /> Revenue Trend
+                    <Activity className="w-4 h-4 text-primary" /> Tren Omzet
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Total vs Live revenue per hari</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Omzet total vs live per hari (rentang terpilih)</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Filter chart per akun */}
@@ -260,20 +281,20 @@ export default function MarketingDashboard({ token, onNavigate }) {
             </GlassCard>
 
             <GlassCard className="p-5 flex flex-col items-center justify-center" data-testid="health-score-card">
-              <h3 className="text-base font-semibold mb-1">Avg Health Score</h3>
-              <p className="text-xs text-muted-foreground mb-4">Rata-rata semua akun aktif</p>
+              <h3 className="text-base font-semibold mb-1">Rata-rata Skor Kesehatan</h3>
+              <p className="text-xs text-muted-foreground mb-4">Rata-rata semua toko aktif</p>
               <HealthScoreGauge score={avgHealthScore ?? 0} size={140} label="" />
               <div className="mt-4 w-full text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Excellent (≥80)</span>
+                  <span className="text-muted-foreground">Sangat baik (≥80)</span>
                   <span className="text-emerald-400">{accounts.filter(a => a.health_score !== null && a.health_score !== undefined && a.health_score >= 80).length}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Good (60-79)</span>
+                  <span className="text-muted-foreground">Cukup (60-79)</span>
                   <span className="text-yellow-400">{accounts.filter(a => a.health_score !== null && a.health_score !== undefined && a.health_score >= 60 && a.health_score < 80).length}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Needs improvement</span>
+                  <span className="text-muted-foreground">Perlu perbaikan</span>
                   <span className="text-red-400">{accounts.filter(a => a.health_score !== null && a.health_score !== undefined && a.health_score < 60).length}</span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -288,7 +309,7 @@ export default function MarketingDashboard({ token, onNavigate }) {
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Platform Accounts</h3>
+                <h3 className="text-lg font-semibold text-foreground">Akun Platform</h3>
                 <p className="text-xs text-muted-foreground">Klik akun untuk dashboard detail</p>
               </div>
               <Button
@@ -296,7 +317,7 @@ export default function MarketingDashboard({ token, onNavigate }) {
                 onClick={() => onNavigate?.('marketing-accounts')}
                 data-testid="manage-accounts-btn"
               >
-                <Plus className="w-4 h-4 mr-2" /> Manage Akun
+                <Plus className="w-4 h-4 mr-2" /> Kelola Akun
               </Button>
             </div>
 

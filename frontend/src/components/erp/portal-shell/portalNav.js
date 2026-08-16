@@ -680,6 +680,19 @@ export const PORTAL_NAV = {
     title: 'Marketing',
     sections: [
       {
+        // FASE D (2026-08-16) — pintu Dashboard Marketing AKHIRNYA ada.
+        // `toko-dashboard` sudah lama menjadi modul bawaan Portal Marketing
+        // (App.js: PORTAL_DEFAULT_MODULE.toko), tetapi TIDAK tercantum di satu pun
+        // sidebar ⇒ begitu pemakai membuka menu lain, tidak ada jalan kembali ke
+        // dashboardnya selain memuat ulang portal. Itulah keluhan "dashboard
+        // marketing hilang dari menu".
+        label: 'RINGKASAN & LAPORAN',
+        items: [
+          { id: 'toko-dashboard',   label: 'Dashboard Marketing', icon: LayoutDashboard },
+          { id: 'marketing-reports', label: 'Laporan Marketing',  icon: BarChart3 },
+        ],
+      },
+      {
         label: 'PENJUALAN MULTI-CHANNEL',
         items: [
           { id: 'marketing-accounts',  label: 'Kelola Akun',       icon: Store },
@@ -703,7 +716,6 @@ export const PORTAL_NAV = {
       {
         label: 'ANALITIK, LIVE & AI',
         items: [
-          { id: 'marketing-reports',   label: 'Laporan Marketing', icon: BarChart3 },
           { id: 'marketing-health',    label: 'Kesehatan Akun',    icon: HeartPulse },
           { id: 'marketing-targets',   label: 'Target & Budget',   icon: Target },
           { id: 'marketing-live-hub',  label: 'Live Selling',      icon: Video },

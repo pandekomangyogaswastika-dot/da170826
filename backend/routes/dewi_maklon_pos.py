@@ -285,7 +285,11 @@ async def _create_engine_po_for_maklon(db, *, payload, client, po_number, items,
         } for it in items],
     }
     try:
-        res = await create_po_internal(db, body, user)
+        # FASE G (2026-08-16): nomornya SUDAH diterbitkan `_next_po_number()` di
+        # bawah jenis dokumen `dewi_maklon_pos.po_number`. `number_issued=True`
+        # mencegah penomoran ganda — memvalidasinya dengan pola jenis dokumen lain
+        # akan menolak nomor yang dibuat sistem sendiri.
+        res = await create_po_internal(db, body, user, number_issued=True)
         return (res or {}).get('id')
     except HTTPException:
         raise

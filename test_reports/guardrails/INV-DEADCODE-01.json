@@ -1,7 +1,7 @@
 {
   "gate": "INV-DEADCODE-01",
   "title": "Handler tergabung / kode mati setelah return (dekorator hilang)",
-  "checked": 5296,
+  "checked": 5302,
   "counts": {
     "INFO": 3
   },
@@ -10,7 +10,7 @@
     "HIGH"
   ],
   "duration_s": 1.84,
-  "ts": "2026-08-15 20:04:04",
+  "ts": "2026-08-16 19:50:24",
   "findings": [
     {
       "sev": "INFO",

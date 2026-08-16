@@ -228,7 +228,8 @@ async def create_po(request: Request):
     return JSONResponse(result, status_code=201)
 
 
-async def create_po_internal(db, body: dict, user: dict) -> dict:
+async def create_po_internal(db, body: dict, user: dict, *,
+                             number_issued: bool = False) -> dict:
     """FASE 3 — SATU jalur pembuatan PO produksi (internal & maklon).
 
     Diekstrak dari handler `POST /api/production-pos` supaya Portal MAKLON bisa
@@ -236,11 +237,38 @@ async def create_po_internal(db, body: dict, user: dict) -> dict:
     bukan menulis PO asli ke collection mirror `dewi_maklon_pos`.
     Pelajaran audit 2026-07-31: dua penulis PO = dua sumber kebenaran = 10 PO yatim
     dengan status produksi palsu.
+
+    `number_issued=True` (FASE G): nomornya SUDAH diterbitkan oleh jenis dokumen
+    ASALNYA — dipakai jalur cermin PO Maklon yang nomornya lahir dari
+    `dewi_maklon_pos.po_number`. Menerbitkan ulang di sini berarti satu dokumen
+    punya dua penomoran; memvalidasinya dengan pola milik jenis dokumen LAIN akan
+    menolak nomor yang justru dibuat sistem sendiri.
     """
-    if not body.get('po_number'): raise HTTPException(400, 'Nomor PO wajib diisi')
+    # FASE G (2026-08-16) — nomor PO lewat SATU kebijakan (auto/manual).
+    # Dulu barisnya `if not body.get('po_number'): raise ...` lalu nomor apa pun
+    # yang dikirim disimpan APA ADANYA. Itu sebabnya arsip PO bercampur
+    # `PO-INT-DEMO-1`, `PO-MK-DEMO-1`, `PO-MKL-GAB-A` — tiga pola untuk satu jenis
+    # dokumen, tidak bisa diurutkan maupun dicari. Bawaan tetap MANUAL supaya cara
+    # kerja hari ini tidak berubah; yang baru: nomor manual wajib mengikuti polanya,
+    # dan owner boleh memindahkannya ke OTOMATIS dari layar Penomoran Dokumen.
     business_type = body.get('business_type', 'internal')
     if business_type not in ('internal', 'maklon'):
         raise HTTPException(400, "business_type harus 'internal' atau 'maklon'")
+    if number_issued:
+        po_number = (body.get('po_number') or '').strip()
+        if not po_number:
+            raise HTTPException(400, 'Nomor PO wajib diisi')
+        if await db.production_pos.find_one({'po_number': po_number}, {'_id': 1}):
+            raise HTTPException(409, f"Nomor PO '{po_number}' sudah dipakai dokumen lain.")
+        body['po_number'] = po_number
+    else:
+        from core.doc_number_policy import issue_number
+        po_number = await issue_number(
+            db,
+            'production_pos.po_number_maklon' if business_type == 'maklon'
+            else 'production_pos.po_number',
+            requested=body.get('po_number') or '')
+        body['po_number'] = po_number
     vendor_name = ''
     if body.get('vendor_id'):
         vendor_doc = await resolve_vendor_doc(db, body['vendor_id'])

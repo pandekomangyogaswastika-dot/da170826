@@ -54,6 +54,11 @@ KEEP = "--keep" in sys.argv
 MARK = "__CMTOVTEST__"
 OVH = "X-CMT-Override-Vendor"
 
+# FASE G (2026-08-16): nomor PO uji WAJIB mengikuti pola resmi jenis dokumennya —
+# nomor karangan seperti `__CMTOVTEST__-PO-9F2A1B` sekarang ditolak backend.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+from gr_common import test_doc_number  # noqa: E402
+
 G, R, Y, B, X = "\033[92m", "\033[91m", "\033[93m", "\033[94m", "\033[0m"
 PASSES: list[str] = []
 FAILS: list[str] = []
@@ -163,7 +168,7 @@ def main() -> int:
         hr = login("hr@dewiaditya.id", "Dewi@123")
 
         # PO + surat jalan supaya 11 modul punya isi
-        po_number = f"{MARK}-PO-{uuid.uuid4().hex[:6].upper()}"
+        po_number = test_doc_number("production_pos.po_number_maklon", admin)
         dl = (datetime.now(timezone.utc) + timedelta(days=7)).date().isoformat()
         c, po = call("post", "/production-pos", admin, body={
             "po_number": po_number, "business_type": "maklon", "vendor_id": vid,
@@ -526,7 +531,8 @@ def main() -> int:
             stats = {}
             try:
                 pos = [p["id"] for p in db.production_pos.find(
-                    {"po_number": {"$regex": MARK}}, {"_id": 0, "id": 1})]
+                    {"$or": [{"notes": {"$regex": MARK}},
+                             {"customer_name": {"$regex": MARK}}]}, {"_id": 0, "id": 1})]
                 vids = [v["id"] for v in db.vendor_partners.find(
                     {"name": {"$regex": MARK}}, {"_id": 0, "id": 1})]
                 jobs = [j["id"] for j in db.production_jobs.find(

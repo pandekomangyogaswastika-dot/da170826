@@ -324,6 +324,38 @@ async def update_receiving(receipt_id: str, request: Request):
         # ── FASE 6 (INV-8): qty REJECT → KARANTINA (bukan hilang tanpa jejak) ──
         # accepted (net) → lokasi storage GR; rejected → lokasi KARANTINA (stok
         # diblokir/available=0) + dok `wh_quarantine_items` utk disposisi lanjutan.
+        # ── FASE H-5 (2026-08-16): ROLL KAIN LAHIR DI SINI ──────────────────
+        # Sebelum ini, GR menambah stok kain lewat `stock_service.add` tanpa pernah
+        # menyentuh `wh_fabric_rolls` — gudang bisa punya 420 kg kain di sistem dan
+        # NOL gulungan yang bisa ditunjuk, sementara Portal Cutting memerlukan roll
+        # untuk melacak lot kain. Rincian roll (jumlah + berat/panjang tiap roll)
+        # DIVALIDASI DULU untuk SEMUA baris sebelum satu pun stok ditulis, supaya
+        # tidak ada GR setengah jadi: stok bertambah tapi rollnya gagal dibuat.
+        roll_plan: dict = {}
+        for item in items_to_process:
+            mid = item.get("material_id")
+            lines = item.get("rolls") or []
+            if not mid or not lines:
+                continue
+            mat_r = await db.rahaza_materials.find_one(
+                {"id": mid}, {"_id": 0, "id": 1, "code": 1, "name": 1, "unit": 1,
+                              "type": 1, "is_cut_panel": 1, "color": 1, "color_name": 1})
+            if not mat_r:
+                raise HTTPException(400, f"Material baris penerimaan tidak ditemukan: {mid}")
+            if not fabric_rolls.is_roll_material(mat_r):
+                raise HTTPException(400, (
+                    f"{mat_r.get('code')} bersatuan '{mat_r.get('unit')}' tidak dilacak per "
+                    "gulungan, jadi rincian roll tidak berlaku untuk baris ini."))
+            accepted = float(item.get("accepted_qty") if item.get("accepted_qty") is not None
+                             else max(0.0, float(item.get("received_qty", 0) or 0)
+                                      - float(item.get("rejected_qty", 0) or 0)))
+            roll_plan[item.get("id")] = (
+                mat_r,
+                fabric_rolls.validate_roll_lines(
+                    lines, accepted, mat_r.get("unit") or "",
+                    f"{mat_r.get('code')} — {mat_r.get('name')}"),
+            )
+
         quarantined_total = 0.0
         quarantine_records = []
         for item in items_to_process:
@@ -386,6 +418,16 @@ async def update_receiving(receipt_id: str, request: Request):
                     logger.error(f"GR movement log failed (material_id={material_id}): {e}")
                     # Non-fatal: stok kanonik sudah tertulis; jangan putus flow.
                 logger.info(f"GR inbound via stock_service: material_id={material_id} +{net_qty} {unit} @ loc={loc_id}")
+
+                # ── FASE H-5: terbitkan roll untuk baris kain (nomor otomatis) ──
+                if item.get("id") in roll_plan:
+                    mat_r, lines_ok = roll_plan[item["id"]]
+                    made = await fabric_roll_engine.create_rolls_from_receipt(
+                        db, {**existing, "location_name": loc_name, "location_id": loc_id},
+                        item, mat_r, lines_ok, user)
+                    rolls_created.extend(r["roll_no"] for r in made)
+                    item["roll_ids"] = [r["id"] for r in made]
+                    item["roll_numbers"] = [r["roll_no"] for r in made]
 
             # ── FASE 6: reject masuk KARANTINA (non-fatal, GR tetap 'received') ──
             if rejected_qty > 0:

@@ -41,14 +41,16 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
-from gr_common import db_handle  # noqa: E402
+from gr_common import db_handle, test_doc_number  # noqa: E402
 
 API = os.environ.get("API_BASE", "http://localhost:8001")
 G, Y, R, C, B, X = "\033[92m", "\033[93m", "\033[91m", "\033[96m", "\033[1m", "\033[0m"
 
 MARK = "VERIFY-FASE-H1"
-PO_OK = "PO-H1-INTERNAL-OK"
-PO_OVER = "PO-H1-INTERNAL-OVER"
+# FASE G (2026-08-16): nomor PO uji diisi saat jalan agar mengikuti pola resmi
+# jenis dokumen PO Produksi Internal (nomor karangan sekarang ditolak backend).
+PO_OK = "PO-INT-H1-OK"
+PO_OVER = "PO-INT-H1-OVER"
 QTY_OK = 10          # kecil, supaya stok demo cukup
 QTY_OVER = 9_000_000  # dipastikan melebihi stok apa pun
 
@@ -93,8 +95,11 @@ def login(email, pwd):
 
 def clean(db):
     n = 0
-    pos = list(db.production_pos.find({"po_number": {"$in": [PO_OK, PO_OVER]}},
-                                      {"_id": 0, "id": 1}))
+    # Pembersihan berpegang pada penanda MARK di `notes` juga, karena sejak FASE G
+    # nomor PO uji ditentukan saat jalan (mengikuti pola resmi), bukan konstanta.
+    pos = list(db.production_pos.find(
+        {"$or": [{"po_number": {"$in": [PO_OK, PO_OVER]}}, {"notes": MARK}]},
+        {"_id": 0, "id": 1}))
     ids = [p["id"] for p in pos]
     if ids:
         vs = [s["id"] for s in db.vendor_shipments.find({"po_id": {"$in": ids}},
@@ -170,6 +175,9 @@ def main():  # noqa: C901
     if not vendor:
         print(f"{R}vendor demo JMC belum ada{X}")
         return 3
+    global PO_OK, PO_OVER
+    PO_OK = test_doc_number("production_pos.po_number", adm)
+    PO_OVER = test_doc_number("production_pos.po_number", adm, band=9500)
 
     print(f"{B}FASE H-1 — kirim material ke CMT harus MENGURANGI stok gudang{X}")
     clean(db)
